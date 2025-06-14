@@ -1,0 +1,379 @@
+{
+  "crystal_identification": {
+    "id": "uuid_string",
+    "timestamp": "2025-06-05T11:45:00.000Z",
+    "confidence_score": 0.89,
+    "source": "gemini_2.5_flash_crystal_bible"
+  },
+
+  "visual_analysis": {
+    "primary_color": "purple",
+    "secondary_colors": ["violet", "white", "clear"],
+    "color_intensity": "deep|medium|light|pale",
+    "transparency": "transparent|translucent|opaque",
+    "luster": "vitreous|metallic|pearly|silky|greasy|dull",
+    "formation": "cluster|point|tumbled|raw|geode|druzy|massive",
+    "crystal_habit": "prismatic|tabular|pyramidal|octahedral|cubic|dodecahedral",
+    "size_estimate": "tiny|small|medium|large|huge",
+    "surface_quality": "smooth|rough|polished|natural|weathered",
+    "inclusions": ["phantom", "rainbow", "rutile", "hematite", "chlorite"],
+    "banding_patterns": ["chevron", "striped", "zoned", "none"],
+    "termination": "natural|polished|broken|double_terminated|phantom"
+  },
+
+  "mineral_identification": {
+    "name": "amethyst",
+    "variety": "chevron_amethyst",
+    "crystal_family": "quartz",
+    "mineral_group": "silicate",
+    "chemical_formula": "SiO2",
+    "crystal_system": "hexagonal|cubic|tetragonal|orthorhombic|monoclinic|triclinic",
+    "space_group": "P3221",
+    "hardness_mohs": 7,
+    "specific_gravity": 2.65,
+    "refractive_index": "1.544-1.553",
+    "birefringence": 0.009,
+    "pleochroism": "weak|moderate|strong|none",
+    "cleavage": "none|perfect|good|poor|indistinct",
+    "fracture": "conchoidal|uneven|splintery|hackly",
+    "streak": "white|colorless|various",
+    "fluorescence": "none|weak|moderate|strong",
+    "fluorescence_color": "blue|green|orange|red|yellow|white|none"
+  },
+
+  "formation_geology": {
+    "formation_type": "igneous|metamorphic|sedimentary|hydrothermal",
+    "formation_environment": "volcanic|plutonic|contact_metamorphic|regional_metamorphic|sedimentary_basin|hydrothermal_vein",
+    "formation_temperature": "low|medium|high",
+    "formation_pressure": "low|medium|high",
+    "associated_minerals": ["quartz", "feldspar", "calcite", "pyrite"],
+    "host_rock": "granite|basalt|limestone|schist|gneiss|sandstone",
+    "depositional_environment": "cavity_filling|replacement|primary_crystallization",
+    "age_formation": "precambrian|paleozoic|mesozoic|cenozoic|unknown"
+  },
+
+  "geographic_occurrence": {
+    "primary_locations": ["Brazil", "Uruguay", "Russia", "India", "Madagascar"],
+    "famous_localities": ["Four Peaks Arizona", "Thunder Bay Canada", "Vera Cruz Mexico"],
+    "rarity": "abundant|common|uncommon|rare|very_rare|extremely_rare",
+    "mining_status": "actively_mined|historically_mined|limited_availability|depleted",
+    "quality_grades": ["gem|near_gem|specimen|commercial|industrial"],
+    "typical_size_range": "mm to cm|cm to dm|dm to m",
+    "market_availability": "readily_available|seasonally_available|limited|collectors_only"
+  },
+
+  "chakra_energy_system": {
+    "primary_chakra": "third_eye",
+    "primary_chakra_number": 6,
+    "secondary_chakras": ["crown", "heart"],
+    "chakra_effects": {
+      "root": 0,
+      "sacral": 0, 
+      "solar_plexus": 2,
+      "heart": 4,
+      "throat": 3,
+      "third_eye": 9,
+      "crown": 8
+    },
+    "energy_direction": "upward|downward|circular|dispersing|focusing",
+    "energy_intensity": "gentle|moderate|strong|intense",
+    "energy_frequency": "low|medium|high|very_high",
+    "resonance_note": "C|C#|D|D#|E|F|F#|G|G#|A|A#|B",
+    "element_correspondence": "earth|water|fire|air|spirit|ether"
+  },
+
+  "astrological_correspondences": {
+    "zodiac_primary": ["pisces", "aquarius"],
+    "zodiac_secondary": ["virgo", "capricorn", "sagittarius"],
+    "zodiac_opposing": ["gemini", "virgo"],
+    "planetary_rulers": ["jupiter", "neptune"],
+    "planetary_secondary": ["saturn", "uranus"],
+    "lunar_phase_optimal": ["full_moon", "waning_gibbous", "new_moon"],
+    "seasonal_correspondence": ["winter", "late_autumn"],
+    "day_of_week": ["thursday", "monday"],
+    "astrological_houses": [9, 12, 4],
+    "birth_chart_placements": ["sun_in_pisces", "moon_in_virgo", "neptune_aspects"]
+  },
+
+  "numerological_properties": {
+    "name_number": 7,
+    "color_vibration": 6,
+    "chakra_number": 6,
+    "master_number": 7,
+    "life_path_compatibility": [3, 6, 7, 9],
+    "expression_number_sync": [7, 11, 22],
+    "soul_urge_resonance": [6, 7, 9],
+    "karmic_number_connections": [7, 16, 19],
+    "personal_year_optimal": [3, 7, 9, 11],
+    "crystal_matrix_number": 144,
+    "frequency_hertz": 396.0,
+    "sacred_geometry": "hexagon|octahedron|icosahedron|flower_of_life"
+  },
+
+  "metaphysical_properties": {
+    "spiritual_attributes": [
+      "enhances_intuition",
+      "promotes_spiritual_awakening", 
+      "facilitates_meditation",
+      "connects_to_higher_realms",
+      "activates_psychic_abilities",
+      "purifies_auric_field",
+      "protects_from_negative_entities"
+    ],
+    "emotional_healing": [
+      "calms_anxiety_and_stress",
+      "promotes_emotional_balance",
+      "heals_grief_and_loss",
+      "reduces_anger_and_irritability",
+      "enhances_self_love",
+      "dissolves_emotional_blockages",
+      "promotes_forgiveness"
+    ],
+    "mental_benefits": [
+      "improves_concentration",
+      "enhances_decision_making",
+      "promotes_clear_thinking",
+      "reduces_mental_fog",
+      "stimulates_creativity",
+      "improves_memory",
+      "enhances_wisdom"
+    ],
+    "physical_healing": [
+      "supports_nervous_system",
+      "reduces_headaches",
+      "improves_sleep_quality",
+      "boosts_immune_system",
+      "reduces_inflammation",
+      "supports_endocrine_system",
+      "aids_detoxification"
+    ]
+  },
+
+  "therapeutic_applications": {
+    "meditation_uses": [
+      "third_eye_activation",
+      "crown_chakra_opening",
+      "psychic_development",
+      "past_life_regression",
+      "spirit_guide_communication",
+      "lucid_dreaming",
+      "astral_projection"
+    ],
+    "healing_modalities": [
+      "crystal_healing_layouts",
+      "chakra_balancing",
+      "reiki_enhancement",
+      "sound_healing_amplification",
+      "color_therapy",
+      "aromatherapy_combination",
+      "energy_cleansing"
+    ],
+    "placement_recommendations": {
+      "bedroom": ["nightstand", "under_pillow", "windowsill"],
+      "meditation_space": ["altar", "in_hands", "third_eye_placement"],
+      "living_areas": ["coffee_table", "bookshelf", "near_plants"],
+      "workspace": ["desk", "computer_area", "filing_cabinet"],
+      "body_placement": ["forehead", "crown", "heart", "throat"],
+      "jewelry": ["pendant", "ring", "bracelet", "earrings"]
+    },
+    "ritual_applications": [
+      "new_moon_ceremonies",
+      "full_moon_charging",
+      "protection_rituals",
+      "manifestation_work",
+      "ancestor_communication",
+      "divination_enhancement",
+      "space_clearing"
+    ]
+  },
+
+  "care_maintenance": {
+    "cleansing_methods": {
+      "safe": ["moonlight", "sage_smudging", "sound_healing", "selenite", "visualization"],
+      "caution": ["sunlight_brief", "running_water_brief", "earth_burial"],
+      "avoid": ["salt_water", "harsh_chemicals", "ultrasonic_cleaners", "extreme_heat"]
+    },
+    "charging_methods": {
+      "optimal": ["full_moonlight", "amethyst_cluster", "clear_quartz_matrix"],
+      "good": ["new_moon_energy", "earth_connection", "intention_setting"],
+      "alternative": ["sound_bowls", "tuning_forks", "pyramid_energy"]
+    },
+    "storage_recommendations": {
+      "material": "natural_fiber|silk|velvet|wood|glass",
+      "environment": "cool_dry_place|away_from_electronics|natural_light",
+      "separation": "individual_wrapping|soft_dividers|cushioned_box",
+      "orientation": "points_up|natural_position|base_down"
+    },
+    "programming_instructions": [
+      "cleanse_first",
+      "hold_in_dominant_hand",
+      "state_clear_intention",
+      "visualize_desired_outcome",
+      "thank_the_crystal",
+      "place_in_working_position"
+    ]
+  },
+
+  "crystal_combinations": {
+    "synergistic_pairings": [
+      {
+        "crystal": "clear_quartz",
+        "effect": "amplifies_amethyst_energy",
+        "ratio": "1:1",
+        "placement": "adjacent_or_touching"
+      },
+      {
+        "crystal": "selenite",
+        "effect": "maintains_high_vibration",
+        "ratio": "1:2",
+        "placement": "selenite_as_base"
+      },
+      {
+        "crystal": "rose_quartz",
+        "effect": "balances_spiritual_with_emotional",
+        "ratio": "1:1",
+        "placement": "heart_and_third_eye"
+      }
+    ],
+    "chakra_sets": [
+      {
+        "purpose": "upper_chakra_alignment",
+        "crystals": ["amethyst", "lapis_lazuli", "rose_quartz"],
+        "layout": "vertical_spine_placement"
+      }
+    ],
+    "conflicting_combinations": [
+      {
+        "crystal": "hematite",
+        "reason": "opposing_energy_directions",
+        "effect": "neutralizes_spiritual_elevation"
+      }
+    ]
+  },
+
+  "market_information": {
+    "price_range": {
+      "raw_specimens": "$5-50_per_piece",
+      "tumbled_stones": "$2-15_per_piece", 
+      "jewelry_grade": "$20-200_per_carat",
+      "museum_quality": "$100-10000_per_specimen",
+      "collector_pieces": "$50-5000_per_piece"
+    },
+    "quality_factors": [
+      "color_saturation",
+      "transparency",
+      "inclusion_patterns", 
+      "size_and_weight",
+      "crystal_formation",
+      "surface_quality",
+      "origin_locality"
+    ],
+    "authentication_tips": [
+      "check_hardness_7_mohs",
+      "look_for_natural_inclusions",
+      "verify_hexagonal_crystal_structure",
+      "test_specific_gravity",
+      "check_for_synthetic_markers"
+    ]
+  },
+
+  "historical_cultural": {
+    "ancient_civilizations": {
+      "egyptian": "amulets_for_protection_in_afterlife",
+      "greek": "prevention_of_intoxication_wine_cups",
+      "roman": "signet_rings_for_clarity_in_decisions",
+      "tibetan": "prayer_beads_for_spiritual_advancement",
+      "native_american": "vision_quest_and_dream_work"
+    },
+    "mythology_folklore": [
+      "dionysus_tears_turned_to_stone",
+      "bishops_stone_for_spiritual_purity",
+      "leonardo_da_vinci_recommended_for_intelligence",
+      "russian_legends_of_frozen_wine",
+      "christian_symbolism_of_spiritual_love"
+    ],
+    "modern_discoveries": [
+      "1960s_new_age_movement_adoption",
+      "crystal_healing_renaissance_1980s",
+      "scientific_piezoelectric_properties_confirmed",
+      "gemological_advances_in_identification",
+      "synthetic_amethyst_development_timeline"
+    ]
+  },
+
+  "scientific_research": {
+    "proven_properties": [
+      "piezoelectric_effect",
+      "pyroelectric_properties",
+      "optical_properties_documented",
+      "crystal_structure_verified",
+      "chemical_composition_confirmed"
+    ],
+    "studied_effects": [
+      "electromagnetic_field_interactions",
+      "water_structuring_effects",
+      "placebo_vs_actual_healing_studies",
+      "meditation_enhancement_research",
+      "stress_reduction_clinical_trials"
+    ],
+    "ongoing_research": [
+      "quantum_field_interactions",
+      "biofield_measurement_studies",
+      "consciousness_interface_research",
+      "therapeutic_application_trials",
+      "energy_medicine_investigations"
+    ]
+  },
+
+  "user_personalization": {
+    "birth_chart_compatibility": {
+      "sun_sign_resonance": 8,
+      "moon_sign_harmony": 6,
+      "rising_sign_alignment": 7,
+      "personal_planet_aspects": [
+        {"planet": "mercury", "harmony": 9},
+        {"planet": "venus", "harmony": 6},
+        {"planet": "mars", "harmony": 4}
+      ]
+    },
+    "life_situation_applications": {
+      "stress_relief": 9,
+      "spiritual_development": 10,
+      "relationship_healing": 6,
+      "career_advancement": 5,
+      "health_support": 7,
+      "creativity_enhancement": 8,
+      "protection_work": 8
+    },
+    "experience_level_guidance": {
+      "beginner": "start_with_meditation_daily_10_minutes",
+      "intermediate": "explore_chakra_work_and_crystal_grids",
+      "advanced": "investigate_advanced_programming_and_healing_work",
+      "expert": "teach_others_and_explore_research_applications"
+    }
+  },
+
+  "automation_metadata": {
+    "data_completeness": 95,
+    "automation_confidence": {
+      "color_detection": 98,
+      "stone_identification": 89,
+      "chakra_mapping": 95,
+      "numerology_calculation": 100,
+      "astrological_correspondence": 92
+    },
+    "manual_verification_needed": [
+      "specific_variety_confirmation",
+      "geographic_origin_verification",
+      "quality_grade_assessment",
+      "market_price_validation"
+    ],
+    "last_updated": "2025-06-05T11:45:00.000Z",
+    "data_sources": [
+      "crystal_bible_judy_hall",
+      "gemini_2.5_flash_analysis",
+      "unified_crystal_database",
+      "user_feedback_integration"
+    ]
+  }
+}

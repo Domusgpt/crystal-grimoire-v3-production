@@ -1,0 +1,106 @@
+{
+  "firebase_remote_config_parameters": {
+    "ads_enabled": {
+      "value": true,
+      "description": "Enable/disable ads globally"
+    },
+    "banner_ad_unit_id": {
+      "value": "ca-app-pub-YOUR_ACTUAL_ID/banner",
+      "description": "Production banner ad unit ID"
+    },
+    "interstitial_ad_unit_id": {
+      "value": "ca-app-pub-YOUR_ACTUAL_ID/interstitial", 
+      "description": "Production interstitial ad unit ID"
+    },
+    "rewarded_ad_unit_id": {
+      "value": "ca-app-pub-YOUR_ACTUAL_ID/rewarded",
+      "description": "Production rewarded ad unit ID"
+    },
+    "video_ads_enabled": {
+      "value": true,
+      "description": "Enable video ads between content"
+    },
+    "premium_unlock_duration_hours": {
+      "value": 1,
+      "description": "Hours of premium access from rewarded ads"
+    },
+    "free_tier_crystal_limit": {
+      "value": 5,
+      "description": "Crystal identifications per day for free users"
+    },
+    "show_ads_after_identifications": {
+      "value": 3,
+      "description": "Show interstitial ad after X crystal identifications"
+    }
+  },
+
+  "firebase_extensions_to_install": [
+    {
+      "name": "storage-resize-images",
+      "purpose": "Automatically resize crystal photos for optimal processing",
+      "configuration": {
+        "IMG_SIZES": "200x200,800x800,1200x1200",
+        "IMG_TYPE": "webp"
+      }
+    },
+    {
+      "name": "firestore-send-email", 
+      "purpose": "Send welcome emails and premium upgrade notifications",
+      "configuration": {
+        "SMTP_CONNECTION_URI": "smtps://username:password@smtp.gmail.com:465",
+        "DEFAULT_FROM": "noreply@crystalgrimoire.com"
+      }
+    },
+    {
+      "name": "firestore-counter",
+      "purpose": "Track crystal identification counts for free tier limits",
+      "configuration": {
+        "COLLECTION_PATH": "user_stats/{userId}/counters/{counterId}"
+      }
+    },
+    {
+      "name": "storage-convert-images",
+      "purpose": "Convert uploaded crystal images to optimal formats",
+      "configuration": {
+        "IMG_BUCKET": "crystalgrimoire-production.appspot.com",
+        "IMG_TYPES": "webp,jpg"
+      }
+    }
+  ],
+
+  "admob_setup_instructions": {
+    "step_1": "Create AdMob account at https://admob.google.com",
+    "step_2": "Add Crystal Grimoire app to AdMob",
+    "step_3": "Create ad units: Banner, Interstitial, Rewarded Video",
+    "step_4": "Add ad unit IDs to Firebase Remote Config",
+    "step_5": "Enable mediation for higher revenue",
+    "step_6": "Set up app-ads.txt for transparency"
+  },
+
+  "revenue_optimization": {
+    "ad_placement_strategy": {
+      "banner_ads": [
+        "Bottom of crystal identification results",
+        "Collection screen footer", 
+        "Settings screen"
+      ],
+      "interstitial_ads": [
+        "After every 3rd crystal identification",
+        "When accessing premium features (with option to watch rewarded ad)",
+        "App launch (with 3 second delay)"
+      ],
+      "rewarded_video_ads": [
+        "Unlock premium features for 1 hour",
+        "Get extra daily crystal identifications",
+        "Access exclusive meditation videos"
+      ]
+    },
+    "premium_tier_benefits": [
+      "No ads",
+      "Unlimited crystal identifications", 
+      "Advanced AI features",
+      "Exclusive content",
+      "Priority support"
+    ]
+  }
+}

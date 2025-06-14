@@ -1,0 +1,102 @@
+{
+  "success": true,
+  "parsedData": {
+    "personalized_recommendations": {
+      "healing_sessions": [],
+      "meditation_practices": [],
+      "journal_prompts": [],
+      "crystal_combinations": []
+    },
+    "ema_compliance": {
+      "data_exportable": null,
+      "user_ownership": null,
+      "migration_ready": null,
+      "transparency_level": null
+    },
+    "confidence_metrics": {
+      "identification_confidence": null,
+      "recommendation_confidence": null,
+      "personalization_score": null
+    }
+  },
+  "metadata": {
+    "architectPlan": {
+      "steps": [
+        {
+          "field": "personalized_recommendations.healing_sessions",
+          "instruction": "Extract array of healing session recommendations based on user profile spiritual goals.",
+          "pattern": "user_profile.spiritual_goals",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.meditation_practices",
+          "instruction": "Extract array of meditation practices based on user profile spiritual goals.",
+          "pattern": "user_profile.spiritual_goals",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.journal_prompts",
+          "instruction": "Extract array of journal prompts based on user profile spiritual goals and sun/moon signs.",
+          "pattern": "user_profile.spiritual_goals, user_profile.birth_chart.sun_sign, user_profile.birth_chart.moon_sign",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.crystal_combinations",
+          "instruction": "Extract array of crystal combinations based on user profile spiritual goals and crystal collection.",
+          "pattern": "user_profile.spiritual_goals, crystal_collection",
+          "validation": "array"
+        },
+        {
+          "field": "ema_compliance.data_exportable",
+          "instruction": "Determine if data is exportable based on predefined compliance rules.",
+          "pattern": null,
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.user_ownership",
+          "instruction": "Determine if user owns their data based on predefined compliance rules.",
+          "pattern": null,
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.migration_ready",
+          "instruction": "Determine if data is migration-ready based on predefined compliance rules.",
+          "pattern": null,
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.transparency_level",
+          "instruction": "Determine transparency level based on predefined compliance rules.",
+          "pattern": null,
+          "validation": "string"
+        },
+        {
+          "field": "confidence_metrics.identification_confidence",
+          "instruction": "Calculate confidence score for crystal identification.",
+          "pattern": "identification_request",
+          "validation": "number"
+        },
+        {
+          "field": "confidence_metrics.recommendation_confidence",
+          "instruction": "Calculate confidence score for personalized recommendations.",
+          "pattern": "user_profile, crystal_collection",
+          "validation": "number"
+        },
+        {
+          "field": "confidence_metrics.personalization_score",
+          "instruction": "Calculate overall personalization score.",
+          "pattern": "user_profile, crystal_collection, identification_request",
+          "validation": "number"
+        }
+      ],
+      "confidence": 0.95,
+      "strategy": "field-by-field extraction"
+    },
+    "confidence": 0.95,
+    "tokensUsed": 1486,
+    "processingTimeMs": 9275,
+    "requestId": "req_1749795350978",
+    "timestamp": "2025-06-13T06:15:50.978Z",
+    "version": "1.0.0"
+  }
+}

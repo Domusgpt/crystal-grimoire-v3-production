@@ -1,0 +1,58 @@
+{
+  "test_session": {
+    "timestamp": "2025-06-13T02:15:52.771970",
+    "total_tests": 4,
+    "passed_tests": 2,
+    "success_rate": 50.0
+  },
+  "individual_results": [
+    {
+      "test": "API Health Check",
+      "success": true,
+      "details": {
+        "status_code": 200,
+        "response_time_ms": "1707"
+      },
+      "duration_ms": 1706.928014755249,
+      "timestamp": "2025-06-13T02:15:42.535076"
+    },
+    {
+      "test": "Crystal Data Processing",
+      "success": true,
+      "details": {
+        "status_code": 200,
+        "response_time_ms": "10220",
+        "tokens_used": 1486,
+        "confidence": 0.95,
+        "success": true
+      },
+      "duration_ms": 10220.369577407837,
+      "timestamp": "2025-06-13T02:15:52.755876"
+    },
+    {
+      "test": "EMA Principle Validation",
+      "success": false,
+      "details": {
+        "data_exportable": null,
+        "user_ownership": null,
+        "migration_ready": null,
+        "has_transparency": true
+      },
+      "duration_ms": null,
+      "timestamp": "2025-06-13T02:15:52.769874"
+    },
+    {
+      "test": "Personalization Quality",
+      "success": false,
+      "details": {
+        "references_user_crystals": false,
+        "has_healing_sessions": false,
+        "has_meditation_practices": false,
+        "has_journal_prompts": false,
+        "personalization_score": "0/100"
+      },
+      "duration_ms": null,
+      "timestamp": "2025-06-13T02:15:52.771937"
+    }
+  ]
+}

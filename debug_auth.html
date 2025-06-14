@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crystal Grimoire V3 - Firebase Auth Debug</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <h1>Crystal Grimoire V3 - Firebase Authentication Debug</h1>
+    <div id="status">Testing Firebase Auth...</div>
+    <div id="result"></div>
+    
+    <h2>Test Sign Up</h2>
+    <input type="email" id="email" placeholder="test@example.com" value="test@crystalgrimoire.com">
+    <input type="password" id="password" placeholder="password123" value="password123">
+    <button onclick="testSignUp()">Test Sign Up</button>
+    <button onclick="testSignIn()">Test Sign In</button>
+    
+    <h2>Debug Info</h2>
+    <pre id="debug"></pre>
+
+    <script>
+        // Initialize Firebase with your exact config
+        const firebaseConfig = {
+            apiKey: 'AIzaSyD8N-vsT7Tdgrk1nlJBvXmcLP3KGfvGk-A',
+            appId: '1:437420484025:web:69560ea78ed4fecce14268',
+            messagingSenderId: '437420484025',
+            projectId: 'crystalgrimoire-v3-production',
+            authDomain: 'crystalgrimoire-v3-production.firebaseapp.com',
+            storageBucket: 'crystalgrimoire-v3-production.firebasestorage.app',
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        
+        document.getElementById('status').innerHTML = '✅ Firebase initialized successfully';
+        
+        // Debug function
+        function debug(message) {
+            console.log(message);
+            document.getElementById('debug').innerHTML += message + '\n';
+        }
+        
+        debug('🔥 Firebase Auth initialized');
+        debug('Project ID: ' + firebaseConfig.projectId);
+        debug('Auth Domain: ' + firebaseConfig.authDomain);
+        debug('Current user: ' + (auth.currentUser ? auth.currentUser.email : 'None'));
+        
+        // Test sign up
+        async function testSignUp() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                debug('\n🔄 Testing sign up for: ' + email);
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                debug('✅ Sign up successful! User ID: ' + userCredential.user.uid);
+                document.getElementById('result').innerHTML = '✅ SIGN UP SUCCESSFUL!';
+            } catch (error) {
+                debug('❌ Sign up failed: ' + error.code + ' - ' + error.message);
+                document.getElementById('result').innerHTML = '❌ SIGN UP FAILED: ' + error.message;
+                
+                // Common Firebase Auth errors
+                if (error.code === 'auth/email-already-in-use') {
+                    debug('💡 Email already exists, try signing in instead');
+                } else if (error.code === 'auth/weak-password') {
+                    debug('💡 Password is too weak, use at least 6 characters');
+                } else if (error.code === 'auth/invalid-email') {
+                    debug('💡 Email format is invalid');
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    debug('💡 Email/Password auth is not enabled in Firebase Console');
+                }
+            }
+        }
+        
+        // Test sign in
+        async function testSignIn() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                debug('\n🔄 Testing sign in for: ' + email);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                debug('✅ Sign in successful! User ID: ' + userCredential.user.uid);
+                document.getElementById('result').innerHTML = '✅ SIGN IN SUCCESSFUL!';
+            } catch (error) {
+                debug('❌ Sign in failed: ' + error.code + ' - ' + error.message);
+                document.getElementById('result').innerHTML = '❌ SIGN IN FAILED: ' + error.message;
+                
+                if (error.code === 'auth/user-not-found') {
+                    debug('💡 User does not exist, try signing up first');
+                } else if (error.code === 'auth/wrong-password') {
+                    debug('💡 Incorrect password');
+                } else if (error.code === 'auth/too-many-requests') {
+                    debug('💡 Too many failed attempts, try again later');
+                }
+            }
+        }
+        
+        // Listen for auth state changes
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                debug('🔐 User signed in: ' + user.email);
+            } else {
+                debug('🔓 User signed out');
+            }
+        });
+        
+        debug('\n✅ Debug page ready. Try signing up or signing in.');
+    </script>
+</body>
+</html>

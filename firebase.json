@@ -1,0 +1,88 @@
+{
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cross-Origin-Embedder-Policy",
+            "value": "unsafe-none"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy", 
+            "value": "unsafe-none"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "api"
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "emulators": {
+    "firestore": {
+      "host": "localhost",
+      "port": 8082
+    },
+    "ui": {
+      "enabled": true,
+      "host": "localhost",
+      "port": 4000
+    }
+  },
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20",
+    "ignore": [
+      "node_modules",
+      ".git",
+      "firebase-debug.log",
+      "firebase-debug.*.log",
+      "*.local"
+    ]
+  },
+  "extensions": {
+    "firestore-stripe-payments-wit8": "stripe/firestore-stripe-payments@0.3.4",
+    "storage-resize-images-kvxm": "firebase/storage-resize-images@0.2.9",
+    "firestore-multimodal-genai": "googlecloud/firestore-multimodal-genai@1.0.2",
+    "firestore-send-email-0t3w": "firebase/firestore-send-email@0.2.3"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "crystalgrimoire-production",
+          "configurations": {
+            "android": "1:937741022651:web:cf181d053f178c9298c09e",
+            "ios": "1:937741022651:web:cf181d053f178c9298c09e",
+            "macos": "1:937741022651:web:cf181d053f178c9298c09e",
+            "web": "1:937741022651:web:cf181d053f178c9298c09e",
+            "windows": "1:937741022651:web:cf181d053f178c9298c09e"
+          }
+        }
+      }
+    }
+  }
+}

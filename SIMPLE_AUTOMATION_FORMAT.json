@@ -1,0 +1,11 @@
+{
+  "user_message": "This beautiful purple amethyst carries the wisdom of ancient spiritual traditions. Its deep violet hues connect you to your third eye chakra, enhancing intuition and promoting inner peace. As a stone closely aligned with Pisces and Aquarius energies, it resonates with your spiritual journey and emotional healing. The crystal's energy vibrates at the number 7 frequency, bringing you closer to divine wisdom and higher consciousness. Place this sacred stone near your meditation space or carry it during times when you need clarity and protection from negative energies.",
+
+  "automation_data": {
+    "color": "purple",
+    "stone_type": "amethyst", 
+    "chakra": "third_eye",
+    "zodiac": ["pisces", "aquarius"],
+    "number": 7
+  }
+}

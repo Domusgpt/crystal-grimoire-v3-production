@@ -1,0 +1,11 @@
+EMAIL EXTENSION CONFIG (for next step):
+
+When you run: firebase ext:install firebase/firestore-send-email
+
+Enter these values:
+1. Instance name: [PRESS ENTER]
+2. Collection name: mail
+3. Email documents collection: mail  
+4. SMTP connection URI: smtps://phillips.paul.email%40gmail.com:your_app_password@smtp.gmail.com:465
+5. Default FROM email: Crystal Grimoire <noreply@crystalgrimoire.com>
+6. Default REPLY-TO: support@crystalgrimoire.com

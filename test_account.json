@@ -1,0 +1,21 @@
+{"users": [
+{
+  "localId": "testuser123",
+  "email": "test@crystalgrimoire.com",
+  "emailVerified": true,
+  "displayName": "Test User",
+  "passwordHash": "UGFzc3dvcmQxMjM=",
+  "salt": "salt123",
+  "createdAt": "1735949000000",
+  "lastSignedInAt": "1735949000000",
+  "providerUserInfo": [
+    {
+      "providerId": "password",
+      "email": "test@crystalgrimoire.com",
+      "federatedId": "test@crystalgrimoire.com",
+      "displayName": "Test User",
+      "rawId": "test@crystalgrimoire.com"
+    }
+  ]
+}
+]}

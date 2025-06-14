@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Crystal images uploaded for AI identification
+    match /crystal_images/{allFiles=**} {
+      // Allow authenticated users to upload crystal images
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');
+      
+      // Allow public read of crystal images for the multimodal extension
+      allow read: if true;
+    }
+    
+    // User profile images
+    match /profile_images/{userId}/{allFiles=**} {
+      allow read, write: if request.auth != null 
+                         && request.auth.uid == userId
+                         && request.resource.size < 2 * 1024 * 1024  // Max 2MB
+                         && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Public crystal database images (read-only)
+    match /crystal_database/{allFiles=**} {
+      allow read: if true;
+      allow write: if false; // Only admins via backend
+    }
+    
+    // Deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

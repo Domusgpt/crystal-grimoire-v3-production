@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Firebase Auth Test</title>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #0F0F23; color: white; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background: #4CAF50; }
+        .error { background: #f44336; }
+        .warning { background: #ff9800; }
+        input, button { margin: 5px; padding: 10px; }
+        button { background: purple; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>🔮 Crystal Grimoire Auth Test</h1>
+    
+    <div id="status"></div>
+    
+    <h3>Test Email Login</h3>
+    <input type="email" id="email" placeholder="Email" value="phillips.paul.email@gmail.com">
+    <input type="password" id="password" placeholder="Password" value="test123">
+    <button onclick="testEmailLogin()">Test Email Login</button>
+    
+    <h3>Test Google Login</h3>
+    <button onclick="testGoogleLogin()">Test Google Login</button>
+    
+    <h3>Test Anonymous Login</h3>
+    <button onclick="testAnonymousLogin()">Test Anonymous Login</button>
+    
+    <button onclick="signOut()">Sign Out</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: 'AIzaSyD8N-vsT7Tdgrk1nlJBvXmcLP3KGfvGk-A',
+            authDomain: 'crystalgrimoire-v3-production.firebaseapp.com',
+            projectId: 'crystalgrimoire-v3-production',
+            storageBucket: 'crystalgrimoire-v3-production.firebasestorage.app',
+            messagingSenderId: '437420484025',
+            appId: '1:437420484025:web:69560ea78ed4fecce14268'
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        function log(message, type = 'warning') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `${new Date().toLocaleTimeString()}: ${message}`;
+            document.getElementById('results').appendChild(div);
+            console.log(message);
+        }
+
+        // Monitor auth state
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                log(`✅ User authenticated: ${user.email} (${user.uid})`, 'success');
+                document.getElementById('status').innerHTML = `
+                    <div class="test-result success">
+                        <strong>Authenticated:</strong> ${user.email}<br>
+                        <strong>UID:</strong> ${user.uid}<br>
+                        <strong>Provider:</strong> ${user.providerData.map(p => p.providerId).join(', ')}<br>
+                        <strong>Email Verified:</strong> ${user.emailVerified}
+                    </div>
+                `;
+            } else {
+                log('🔒 User not authenticated', 'warning');
+                document.getElementById('status').innerHTML = '<div class="test-result warning">Not authenticated</div>';
+            }
+        });
+
+        async function testEmailLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log(`🔑 Attempting email login for ${email}...`);
+                const result = await auth.signInWithEmailAndPassword(email, password);
+                log(`✅ Email login successful: ${result.user.email}`, 'success');
+            } catch (error) {
+                log(`❌ Email login failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testGoogleLogin() {
+            try {
+                log('🔑 Attempting Google login...');
+                const provider = new firebase.auth.GoogleAuthProvider();
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                const result = await auth.signInWithPopup(provider);
+                log(`✅ Google login successful: ${result.user.email}`, 'success');
+            } catch (error) {
+                log(`❌ Google login failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAnonymousLogin() {
+            try {
+                log('🔑 Attempting anonymous login...');
+                const result = await auth.signInAnonymously();
+                log(`✅ Anonymous login successful: ${result.user.uid}`, 'success');
+            } catch (error) {
+                log(`❌ Anonymous login failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function signOut() {
+            try {
+                await auth.signOut();
+                log('✅ Sign out successful', 'success');
+            } catch (error) {
+                log(`❌ Sign out failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initial status
+        log('🚀 Firebase Auth Test initialized');
+        log(`🔧 Project: ${firebaseConfig.projectId}`);
+        log(`🌐 Auth Domain: ${firebaseConfig.authDomain}`);
+    </script>
+</body>
+</html>

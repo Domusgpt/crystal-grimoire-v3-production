@@ -1,0 +1,26 @@
+# Firebase Extensions Manifest
+# Use this for non-interactive extension deployment
+
+extensions:
+  # BigQuery Export for Analytics
+  firestore-bigquery-export:
+    ref: firebase/firestore-bigquery-export@0.2.5
+    params:
+      COLLECTION_PATH: crystal_identifications,user_analytics,users/{userId}/crystals
+      DATASET_ID: crystal_analytics
+      TABLE_ID: firestore_export
+      DATASET_LOCATION: us-central1
+      CLUSTERING_FIELDS: user_id,timestamp
+      PARTITION_FIELD: timestamp
+      PARTITION_TYPE: DAY
+
+  # Auth Custom Claims for Subscription Management  
+  auth-custom-claims:
+    ref: firebase/auth-custom-claims@0.1.9
+    params:
+      CLAIMS_COLLECTION: user_claims
+      USER_COLLECTION: users
+      SUBSCRIPTION_FIELD: subscription_tier
+      PREMIUM_CLAIM: is_premium
+      TIER_CLAIM: subscription_tier
+      ADMIN_EMAILS: phillips.paul.email@gmail.com

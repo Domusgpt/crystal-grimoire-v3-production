@@ -1,0 +1,118 @@
+{
+  "success": true,
+  "parsedData": {
+    "personalized_recommendations": {
+      "healing_sessions": [
+        "Crown chakra meditation with Amethyst for Leo confidence enhancement",
+        "Third eye activation using Amethyst with Clear Quartz amplification",
+        "Emotional healing combining Amethyst and Rose Quartz for Pisces Moon support"
+      ],
+      "meditation_practices": [
+        "Morning sun meditation with Amethyst and Clear Quartz for Leo energy",
+        "Evening moon meditation with Amethyst and Rose Quartz for Pisces intuition",
+        "Protection meditation with Amethyst and Black Tourmaline for Scorpio transformation"
+      ],
+      "journal_prompts": [
+        "How does Amethyst enhance my natural Leo leadership qualities?",
+        "What intuitive messages does Amethyst reveal to my Pisces Moon?",
+        "How can Amethyst support my Scorpio Rising transformation journey?"
+      ],
+      "crystal_combinations": [
+        "Amethyst + Rose Quartz + Clear Quartz = Love amplification trinity",
+        "Amethyst + Black Tourmaline + Clear Quartz = Protection and clarity shield",
+        "Amethyst + Rose Quartz = Emotional healing and self-love boost"
+      ]
+    },
+    "ema_compliance": {
+      "data_exportable": true,
+      "user_ownership": true,
+      "migration_ready": true,
+      "transparency_level": "HIGH (AI processing fully explained with confidence scores)"
+    },
+    "confidence_metrics": {
+      "identification_confidence": 0.95,
+      "recommendation_confidence": 0.9,
+      "personalization_score": 0.88
+    }
+  },
+  "metadata": {
+    "architectPlan": {
+      "steps": [
+        {
+          "field": "personalized_recommendations.healing_sessions",
+          "instruction": "Extract healing session descriptions from text",
+          "pattern": "healing session descriptions",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.meditation_practices",
+          "instruction": "Extract meditation practice descriptions from text",
+          "pattern": "meditation practice descriptions",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.journal_prompts",
+          "instruction": "Extract journal prompt suggestions from text",
+          "pattern": "journal prompt suggestions",
+          "validation": "array"
+        },
+        {
+          "field": "personalized_recommendations.crystal_combinations",
+          "instruction": "Extract crystal combination suggestions from text",
+          "pattern": "crystal combination suggestions",
+          "validation": "array"
+        },
+        {
+          "field": "ema_compliance.data_exportable",
+          "instruction": "Determine if data is exportable, true or false",
+          "pattern": "data exportable flag",
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.user_ownership",
+          "instruction": "Determine if user owns data, true or false",
+          "pattern": "user data ownership flag",
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.migration_ready",
+          "instruction": "Determine if data is migration ready, true or false",
+          "pattern": "data migration readiness flag",
+          "validation": "boolean"
+        },
+        {
+          "field": "ema_compliance.transparency_level",
+          "instruction": "Extract data transparency level description",
+          "pattern": "data transparency level",
+          "validation": "string"
+        },
+        {
+          "field": "confidence_metrics.identification_confidence",
+          "instruction": "Assign a confidence score for crystal identification (0-1)",
+          "pattern": "confidence score for crystal identification",
+          "validation": "number"
+        },
+        {
+          "field": "confidence_metrics.recommendation_confidence",
+          "instruction": "Assign a confidence score for recommendations (0-1)",
+          "pattern": "confidence score for recommendations",
+          "validation": "number"
+        },
+        {
+          "field": "confidence_metrics.personalization_score",
+          "instruction": "Assign a personalization score based on user profile (0-1)",
+          "pattern": "personalization score",
+          "validation": "number"
+        }
+      ],
+      "confidence": 0.95,
+      "strategy": "field-by-field extraction"
+    },
+    "confidence": 0.95,
+    "tokensUsed": 1964,
+    "processingTimeMs": 9199,
+    "requestId": "req_1749795410155",
+    "timestamp": "2025-06-13T06:16:50.155Z",
+    "version": "1.0.0"
+  }
+}

@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // User's crystal collection
+      match /crystals/{crystalId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's dreams
+      match /dreams/{dreamId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's ritual sessions
+      match /ritual_sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      
+      // User's healing sessions
+      match /healing_sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    
+    // Crystal identifications - for multimodal GenAI extension
+    match /crystal_identifications/{identificationId} {
+      // Allow authenticated users to create identification requests
+      allow create: if request.auth != null;
+      
+      // Allow users to read their own identifications
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || 
+         request.auth.uid == resource.data.userId);
+      
+      // Allow Firebase extensions to update documents (they use service account)
+      allow update: if true; // Extensions update with output
+    }
+    
+    // Legacy identifications collection (user can only access their own)
+    match /identifications/{identificationId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Guidance sessions (user can only access their own)
+    match /guidance_sessions/{sessionId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Dreams collection (user can only access their own)
+    match /dreams/{dreamId} {
+      allow read, write: if request.auth != null && 
+        resource.data.userId == request.auth.uid;
+    }
+    
+    // Email collection (write-only for sending emails)
+    match /mail/{emailId} {
+      allow write: if request.auth != null;
+    }
+    
+    // Stripe customers collection (managed by extension)
+    match /customers/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+      
+      match /checkout_sessions/{sessionId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+      
+      match /subscriptions/{subscriptionId} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+    
+    // Crystal database (read-only for all authenticated users)
+    match /crystal_database/{crystalId} {
+      allow read: if request.auth != null;
+    }
+    
+    // Health check document (admin only)
+    match /_health_check/{docId} {
+      allow read, write: if true; // Allow for health checks
+    }
+  }
+}
