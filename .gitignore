@@ -60,3 +60,82 @@ temp/
 *.pem
 *.key
 *.cert
+
+/ARCHIVE/
+# --- Jules's Proposed Additions (re-attempt) ---
+# Sensitive Firebase files
+firebase-service-account.json # CRITICAL - Service account keys
+firebase_remote_config_setup.json
+test_account.json
+test_users.json
+
+# Local configuration files
+email_config.txt
+
+# Local scripts and notes
+FIRESTORE_SETUP_COMMANDS.sh
+firebase_cli_commands.md
+firebase_cli_extensions_setup.sh
+firebase_optimization_script.sh
+install_image_resize.sh
+install_stripe.sh
+start_backend.sh
+simple_test_server.js
+
+# Test outputs and artifacts
+comprehensive_test_results.json
+parserator_fixed_result.json
+parserator_test_result.json
+auth_test.html
+debug_auth.html
+
+# Internal documents, guides, and notes
+851657124-The-Crystal-Bible.pdf
+Alter this into a Logo.jpg
+BULLSHIT_AUDIT_RESULTS.md
+CLAUDE.md
+COMPLETE_CRYSTAL_DATA_FORMAT.json
+COMPREHENSIVE_BULLSHIT_AUDIT.md
+COMPREHENSIVE_INTEGRATION_PLAN.md
+COMPREHENSIVE_TESTING_CHECKLIST.md
+CORRECT_FIREBASE_CLI_COMMANDS.md
+CRYSTAL_DATA_SYNC_GUIDE.md
+CRYSTAL_HEALING_SYSTEM.md
+CRYSTAL_IDENTIFICATION_SYSTEM.md
+DEEP_BULLSHIT_AUDIT_COMPLETE.md
+DEMO_VERIFICATION.md
+DOMAIN_TRANSFER_GUIDE.md
+DREAM_JOURNAL_SYSTEM.md
+EMAIL_SYSTEM.md
+ENHANCED_LLM_INTEGRATION_TEST.md
+FINAL_SYSTEM_STATUS.md
+FIREBASE_EXTENSIONS_PRODUCTION.md
+FIREBASE_INTEGRATION_SYSTEM.md
+FIREBASE_SETUP_GUIDE.md
+FIREBASE_STATUS_REPORT.md
+Feature LIST minimal release.md
+GOOGLE_AUTH_FIX.md
+INTEGRATION-IMPLEMENTATION-PLAN.md
+INTEGRATION_DEPENDENCY_MAP.md
+LIVE_APP_STATUS.md
+LLM_INTEGRATION_FIXES_NEEDED.md
+MOON_RITUALS_SYSTEM.md
+PARSERATOR_INTEGRATION_DOCUMENTATION.md
+PARSERATOR_INTEGRATION_GUIDE.md
+PRODUCTION_TESTING_RESULTS.md
+# README-v3.md # This is now in ARCHIVE/ so covered by /ARCHIVE/
+SETUP_ACCOUNTS_CHECKLIST.md
+SOUND_BATH_SYSTEM.md
+STRIPE_PAYMENT_SYSTEM.md
+# TERMS_OF_SERVICE.md # User to decide if this is deployed version or draft
+TESTING_RESULTS_REPORT.md
+TEST_ALL_FEATURES.md
+UNIFIED_DATA_AUTOMATION.md
+UNIFIED_DATA_MODEL.md
+hey-jules-help-love-claude.md
+crystal-grimoire-llm-prompt.txt
+SIMPLE_AUTOMATION_FORMAT.json
+
+# Directory of local notes/images - Ignores the directory and everything in it
+LOOK at these MARKDOWNS AND SCREEN SHOTS FOR NEEDED CHANGES and fixes/
+# --- End of Jules's Proposed Additions (re-attempt) ---
