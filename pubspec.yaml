@@ -4,8 +4,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
-  flutter: ">=3.32.0"
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
 
 dependencies:
   flutter:
@@ -51,19 +51,19 @@ dependencies:
   timezone: ^0.9.4
   
   # Firebase Core & Authentication
-  firebase_core: ^3.13.1
-  firebase_auth: ^5.5.4
+  firebase_core: ^3.14.0
+  firebase_auth: ^5.6.0
   firebase_ai: ^2.0.0
-  firebase_analytics: ^11.3.6
-  firebase_messaging: ^15.1.6
-  firebase_performance: ^0.10.0+14
-  firebase_app_check: ^0.3.2+0
-  google_sign_in: ^6.1.6
+  firebase_analytics: ^11.5.0
+  firebase_messaging: ^15.2.7
+  firebase_performance: ^0.10.1+7
+  firebase_app_check: ^0.3.2+7
+  google_sign_in: ^6.3.0
   sign_in_with_apple: ^5.0.0
   
   # Cloud Storage
-  cloud_firestore: ^5.6.8
-  firebase_storage: ^12.4.6
+  cloud_firestore: ^5.6.9
+  firebase_storage: ^12.4.7
   cloud_functions: ^5.2.6
   
   # Camera
@@ -95,7 +95,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
   mockito: ^5.4.4 # Or latest compatible
   build_runner: ^2.4.8 # Or latest compatible
 
