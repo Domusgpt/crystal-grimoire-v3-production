@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/settings_service.dart';
+import '../services/storage_service.dart';
+import '../services/firebase_service.dart';
 import '../models/user_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -32,17 +36,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // Load from Firebase/storage
-      final settings = SettingsService();
-      // Simulate loading profile data
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Get current Firebase Auth user
+      final currentUser = FirebaseAuth.instance.currentUser;
+      final storageService = StorageService();
       
-      // Mock data - replace with actual profile loading
-      _nameController.text = "Spiritual Seeker";
-      _emailController.text = "user@example.com";
-      _birthdateController.text = "March 21, 1990";
-      _birthtimeController.text = "3:30 PM";
-      _locationController.text = "Los Angeles, CA";
+      if (currentUser != null) {
+        // Load actual user data from Firebase Auth
+        _nameController.text = currentUser.displayName ?? 'Paul Phillips';
+        _emailController.text = currentUser.email ?? 'phillips.paul.email@gmail.com';
+        
+        // Load birth chart data from storage if available
+        final birthChart = await storageService.loadBirthChart();
+        if (birthChart != null) {
+          if (birthChart.birthDate != null) {
+            _selectedDate = birthChart.birthDate;
+            _birthdateController.text = _formatDate(birthChart.birthDate!);
+          }
+          if (birthChart.birthTime != null) {
+            _selectedTime = TimeOfDay.fromDateTime(birthChart.birthTime!);
+            _birthtimeController.text = _formatTime(_selectedTime!);
+          }
+          _locationController.text = birthChart.birthLocation ?? '';
+        } else {
+          // Default values if no birth chart saved yet
+          _birthdateController.text = '';
+          _birthtimeController.text = '';
+          _locationController.text = '';
+        }
+      } else {
+        // Fallback if no user authenticated
+        _nameController.text = 'Paul Phillips';
+        _emailController.text = 'phillips.paul.email@gmail.com';
+        _birthdateController.text = '';
+        _birthtimeController.text = '';
+        _locationController.text = '';
+      }
       
     } catch (e) {
       _showErrorSnackbar('Failed to load profile: $e');
@@ -413,23 +441,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // Save to Firebase/storage
-      final settings = SettingsService();
+      final storageService = StorageService();
+      final firebaseService = context.read<FirebaseService>();
       
-      // Create profile data
-      final profileData = {
-        'name': _nameController.text,
-        'email': _emailController.text,
-        'birth_date': _selectedDate?.toIso8601String(),
-        'birth_time': _selectedTime != null 
-            ? '${_selectedTime!.hour}:${_selectedTime!.minute}'
-            : null,
-        'birth_location': _locationController.text,
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-
-      // Simulate saving to backend
-      await Future.delayed(const Duration(seconds: 1));
+      // Update Firebase Auth user display name if changed
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null && _nameController.text != currentUser.displayName) {
+        await currentUser.updateDisplayName(_nameController.text);
+      }
+      
+      // Create and save birth chart if date/time/location provided
+      if (_selectedDate != null && _selectedTime != null && _locationController.text.isNotEmpty) {
+        final birthDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+        
+        final birthChartData = {
+          'birth_date': _selectedDate!.toIso8601String(),
+          'birth_time': birthDateTime.toIso8601String(),
+          'birth_location': _locationController.text,
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+        
+        await StorageService.saveBirthChart(birthChartData);
+      }
+      
+      // Create user profile
+      final userProfile = UserProfile(
+        uid: currentUser?.uid ?? 'anonymous',
+        name: _nameController.text,
+        email: _emailController.text,
+        subscriptionTier: SubscriptionTier.free,
+        spiritualPreferences: {},
+      );
+      
+      // Save user profile
+      await storageService.saveUserProfile(userProfile);
+      
+      // Try to sync with Firebase if authenticated
+      if (firebaseService.isAuthenticated) {
+        await firebaseService.syncUserProfile(userProfile);
+      }
       
       _showSuccessSnackbar('Profile saved successfully!');
       Navigator.pop(context);
@@ -471,6 +527,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    return '${_getMonthName(date.month)} ${date.day}, ${date.year}';
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
   }
 
   @override

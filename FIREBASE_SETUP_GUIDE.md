@@ -144,7 +144,11 @@ For your Flutter application, you'll typically use the Firebase CLI to configure
 
 1.  **Install Firebase CLI:** If you haven't already, [install the Firebase CLI](https://firebase.google.com/docs/cli#install_the_firebase_cli).
 2.  **Login to Firebase:** `firebase login`
-3.  **Configure FlutterFire:**
+3.  **Install FlutterFire CLI:** Ensure you have the FlutterFire CLI installed. If not, run:
+    ```bash
+    dart pub global activate flutterfire_cli
+    ```
+4.  **Configure FlutterFire:**
     *   In your Flutter project root (`CrystalGrimoireProject/`), run:
         ```bash
         flutterfire configure

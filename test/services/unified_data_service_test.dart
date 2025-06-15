@@ -222,19 +222,20 @@ extension UserProfileTestExtension on UserProfile {
 }
 
 // Helper extension for UserIntegration if it's immutable and needs easy copying for tests
-extension UserIntegrationTestExtension on UserIntegration {
-  UserIntegration copyWith({
-    String? userId,
-    String? addedToCollection,
-    // ... other fields
-  }) {
-    return UserIntegration(
-      userId: userId ?? this.userId,
-      addedToCollection: addedToCollection ?? this.addedToCollection,
-      personalRating: this.personalRating,
-      usageFrequency: this.usageFrequency,
-      userExperiences: this.userExperiences,
-      intentionSettings: this.intentionSettings,
-    );
-  }
-}
+// This is now redundant as UserIntegration model has its own copyWith method.
+// extension UserIntegrationTestExtension on UserIntegration {
+//   UserIntegration copyWith({
+//     String? userId,
+//     String? addedToCollection,
+//     // ... other fields
+//   }) {
+//     return UserIntegration(
+//       userId: userId ?? this.userId,
+//       addedToCollection: addedToCollection ?? this.addedToCollection,
+//       personalRating: this.personalRating,
+//       usageFrequency: this.usageFrequency,
+//       userExperiences: this.userExperiences,
+//       intentionSettings: this.intentionSettings,
+//     );
+//   }
+// }

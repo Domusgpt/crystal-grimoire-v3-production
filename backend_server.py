@@ -194,63 +194,43 @@ def calculate_name_numerology_number(name: str) -> int:
     return total if total != 0 else 0 # Return 0 if name was empty or invalid chars only
 
 def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
-    core_data = ai_response.get("crystal_core", {})
-    enrichment_data = ai_response.get("automatic_enrichment", {})
+    # Simplified parsing logic for map_ai_response_to_unified_data
+    # AI response is expected to be a single JSON object with potential groups.
 
-    # Visual Analysis
-    va_data = core_data.get("visual_analysis", {})
-    visual_analysis = VisualAnalysis(
-        primary_color=va_data.get("primary_color", "Unknown"),
-        secondary_colors=va_data.get("secondary_colors", []),
-        transparency=va_data.get("transparency", "Unknown"),
-        formation=va_data.get("formation", "Unknown"),
-        size_estimate=va_data.get("size_estimate")
-    )
-
-    # Identification
-    id_data = core_data.get("identification", {})
-    identification = Identification(
-        stone_type=id_data.get("stone_type", "Unknown"),
-        crystal_family=id_data.get("crystal_family", "Unknown"),
-        variety=id_data.get("variety"),
-        confidence=id_data.get("confidence", 0.0)
-    )
-
-    # Energy Mapping & Astrological Data from Color
-    em_data = core_data.get("energy_mapping", {})
-    ad_data = core_data.get("astrological_data", {})
-
-    ai_primary_chakra = em_data.get("primary_chakra", "Unknown")
-    ai_chakra_number = em_data.get("chakra_number", 0)
-    ai_secondary_chakras = em_data.get("secondary_chakras", [])
-    ai_primary_signs = ad_data.get("primary_signs", [])
-
-    # --- NEW MAPPING LOGIC based on simplified AI response ---
-    # ai_response is now expected to be a flatter JSON object.
-    # We will use .get() extensively to access potential keys.
+    # Get logical groups from AI response, defaulting to empty dict if group is missing
+    id_details = ai_response.get("identification_details", {})
+    visual_chars = ai_response.get("visual_characteristics", {})
+    physical_props_summary = ai_response.get("physical_properties_summary", {})
+    meta_aspects = ai_response.get("metaphysical_aspects", {})
+    num_insights = ai_response.get("numerology_insights", {})
+    enrich_details = ai_response.get("enrichment_details", {})
 
     # Visual Analysis
     visual_analysis = VisualAnalysis(
-        primary_color=ai_response.get("primary_color", "Unknown"),
-        secondary_colors=ai_response.get("secondary_colors", []),
-        transparency=ai_response.get("transparency", "Unknown"),
-        formation=ai_response.get("formation", "Unknown"),
-        size_estimate=ai_response.get("size_estimate")
+        primary_color=visual_chars.get("primary_color", "Unknown"),
+        secondary_colors=visual_chars.get("secondary_colors", []),
+        transparency=visual_chars.get("transparency", "Unknown"),
+        formation=visual_chars.get("formation", "Unknown"),
+        size_estimate=visual_chars.get("size_estimate")
     )
 
     # Identification
     identification = Identification(
-        stone_type=ai_response.get("stone_name", ai_response.get("name", "Unknown")), # Allow 'name' or 'stone_name'
-        crystal_family=ai_response.get("crystal_family", "Unknown"),
-        variety=ai_response.get("variety"),
-        confidence=ai_response.get("identification_confidence", 0.0)
+        stone_type=id_details.get("stone_name", id_details.get("name", "Unknown")),
+        crystal_family=id_details.get("crystal_family", "Unknown"),
+        variety=id_details.get("variety"),
+        confidence=id_details.get("identification_confidence", 0.0)
     )
 
     # Energy Mapping & Astrological Data from Color & AI
-    ai_primary_chakra = ai_response.get("primary_chakra", "Unknown")
-    ai_chakra_number = ai_response.get("chakra_number", 0) # AI might provide this directly
-    ai_secondary_chakras = ai_response.get("secondary_chakras", [])
-    ai_primary_signs = ai_response.get("primary_zodiac_signs", [])
+    ai_primary_chakra = meta_aspects.get("primary_chakra", "Unknown")
+    # AI might provide chakra_number directly in metaphysical_aspects or numerology_insights
+    ai_meta_chakra_number = meta_aspects.get("chakra_number", 0)
+    ai_num_chakra_number = num_insights.get("chakra_number_for_numerology", 0)
+    ai_chakra_number = ai_meta_chakra_number or ai_num_chakra_number # Prioritize metaphysical if both given
+
+    ai_secondary_chakras = meta_aspects.get("secondary_chakras", [])
+    ai_primary_signs = meta_aspects.get("primary_zodiac_signs", [])
 
     # Detailed Color-to-Chakra-Signs Mapping (from UNIFIED_DATA_MODEL.md)
     COLOR_CHAKRA_SIGN_MAP = {
@@ -288,27 +268,26 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
 
     energy_mapping = EnergyMapping(
         primary_chakra=final_primary_chakra,
-        secondary_chakras=final_secondary_chakras, # AI or default empty
+        secondary_chakras=final_secondary_chakras,
         chakra_number=final_chakra_number,
-        vibration_level=em_data.get("vibration_level")
+        vibration_level=meta_aspects.get("vibration_level")
     )
 
     astrological_data = AstrologicalData(
-        primary_signs=final_primary_signs, # Potentially updated by color map
-        compatible_signs=ad_data.get("compatible_signs", []),
-        planetary_ruler=ad_data.get("planetary_ruler"),
-        element=ad_data.get("element")
+        primary_signs=final_primary_signs,
+        compatible_signs=meta_aspects.get("compatible_signs", []), # Assuming AI might provide this
+        planetary_ruler=meta_aspects.get("planetary_rulers")[0] if meta_aspects.get("planetary_rulers") else None, # Take first if list
+        element=meta_aspects.get("elements")[0] if meta_aspects.get("elements") else None # Take first if list
     )
 
     # Numerology Data
-    num_data = core_data.get("numerology", {})
-    ai_crystal_number = num_data.get("crystal_number", 0)
-    ai_color_vibration = num_data.get("color_vibration", 0)
-    ai_master_number = num_data.get("master_number", 0)
+    ai_crystal_number = num_insights.get("crystal_number_association", 0)
+    ai_color_vibration = num_insights.get("color_vibration_number", 0)
+    ai_master_number = num_insights.get("master_numerology_number_suggestion", 0)
 
-    # If AI provides chakra_number for numerology, use it, else use the one from energy_mapping
-    ai_numerology_chakra_number = num_data.get("chakra_number")
-    final_numerology_chakra_number = ai_numerology_chakra_number if ai_numerology_chakra_number is not None else final_chakra_number
+    # final_numerology_chakra_number uses ai_num_chakra_number (from numerology_insights)
+    # or falls back to final_chakra_number (from energy_mapping logic)
+    final_numerology_chakra_number = ai_num_chakra_number if ai_num_chakra_number != 0 else final_chakra_number
 
     # Calculate crystal_number from stone_type if not provided by AI or is 0
     calculated_crystal_number = calculate_name_numerology_number(identification.stone_type)
@@ -343,7 +322,7 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
     crystal_core = CrystalCore(
         id=str(uuid.uuid4()),
         timestamp=datetime.utcnow().isoformat(),
-        confidence_score=core_data.get("confidence_score", 0.0),
+        confidence_score=ai_response.get("overall_confidence_score", 0.0), # From top-level
         visual_analysis=visual_analysis,
         identification=identification,
         energy_mapping=energy_mapping,
@@ -354,9 +333,10 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
     # Automatic Enrichment
     ae_data = enrichment_data # alias for brevity
 
-    # Attempt to derive mineral_class if not provided by AI and identification.crystal_family is known
+    # Attempt to derive mineral_class if not provided by AI (from enrichment_details)
+    # and identification.crystal_family is known
     derived_mineral_class = None
-    ai_mineral_class = ai_response.get("mineral_class") # Check if AI provides it directly
+    ai_mineral_class = enrich_details.get("mineral_class")
 
     if not ai_mineral_class and identification.crystal_family and identification.crystal_family != "Unknown":
         CRYSTAL_FAMILY_TO_MINERAL_CLASS = {
@@ -394,15 +374,15 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
         derived_mineral_class = CRYSTAL_FAMILY_TO_MINERAL_CLASS.get(identification.crystal_family.lower())
 
     automatic_enrichment = AutomaticEnrichment(
-        crystal_bible_reference=ai_response.get("crystal_bible_reference"),
-        healing_properties=ai_response.get("healing_properties", []),
-        usage_suggestions=ai_response.get("usage_suggestions", []),
-        care_instructions=ai_response.get("care_instructions", []),
-        synergy_crystals=ai_response.get("synergy_crystals", []),
-        mineral_class=ai_mineral_class or derived_mineral_class # Prioritize AI, then rule
+        crystal_bible_reference=enrich_details.get("crystal_bible_reference"),
+        healing_properties=enrich_details.get("healing_properties", []),
+        usage_suggestions=enrich_details.get("usage_suggestions", []),
+        care_instructions=enrich_details.get("care_instructions", []),
+        synergy_crystals=enrich_details.get("synergy_crystals", []),
+        mineral_class=ai_mineral_class or derived_mineral_class
     )
 
-    # UserIntegration will be minimal for now
+    # UserIntegration will be minimal for now, typically populated when user saves to collection
     user_integration = UserIntegration()
 
     return UnifiedCrystalData(
@@ -684,12 +664,23 @@ async def read_crystal(crystal_id: str):
         raise HTTPException(status_code=500, detail=f"Failed to read crystal: {str(e)}")
 
 @app.get("/api/crystals", response_model=List[UnifiedCrystalData])
-async def list_crystals():
+async def list_crystals(user_id: Optional[str] = Query(None, description="Filter crystals by user_id.")):
     if not crystals_collection:
         raise HTTPException(status_code=503, detail="Firestore not available")
     try:
+        crystals_query = crystals_collection
+        if user_id:
+            logger.info(f"Fetching crystals for user_id: {user_id}")
+            # This requires a composite index on 'user_integration.user_id' in Firestore.
+            crystals_query = crystals_collection.where("user_integration.user_id", "==", user_id)
+        else:
+            logger.info("Fetching all crystals (no user_id provided). For admin/debug purposes.")
+            # Consider adding pagination or limits here for admin view of all crystals.
+            # For now, it fetches all, which might be large.
+            pass # No change to crystals_query, fetches whole collection
+
         crystals_list = []
-        docs = await asyncio.to_thread(crystals_collection.stream)
+        docs = await asyncio.to_thread(crystals_query.stream)
         for doc in docs:
             crystals_list.append(UnifiedCrystalData(**doc.to_dict()))
         return crystals_list

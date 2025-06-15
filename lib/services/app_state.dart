@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../models/crystal.dart';
 import '../models/crystal_collection.dart';
+import '../models/unified_crystal_data.dart';
 import 'usage_tracker.dart';
 import 'cache_service.dart';
 import 'collection_service_v2.dart';
@@ -40,7 +41,7 @@ class AppState extends ChangeNotifier {
   bool get isFirstLaunch => _isFirstLaunch;
   bool get hasSeenOnboarding => _hasSeenOnboarding;
   List<Crystal> get crystalCollection => _collectionService?.collection
-      .map((entry) => entry.crystal).toList() ?? [];
+      .map((entry) => _convertUnifiedToCrystal(entry)).toList() ?? [];
   List<CrystalIdentification> get recentIdentifications => 
       List.unmodifiable(_recentIdentifications);
   bool get isLoading => _isLoading;
@@ -132,7 +133,7 @@ class AppState extends ChangeNotifier {
     _chakraCoverage = {};
     for (final chakra in chakras) {
       final crystalsForChakra = collection.where((entry) => 
-        entry.crystal.chakras.contains(chakra)
+        entry.crystalCore.metaphysicalProperties?.primaryChakras.contains(chakra) ?? false
       ).length;
       _chakraCoverage[chakra] = crystalsForChakra;
     }
@@ -143,7 +144,7 @@ class AppState extends ChangeNotifier {
     if (_collectionService == null) return;
     
     final collection = _collectionService!.collection;
-    final ownedCrystalNames = collection.map((e) => e.crystal.name).toSet();
+    final ownedCrystalNames = collection.map((e) => e.crystalCore.identification.stoneType).toSet();
     
     // Update recommendations to exclude already owned crystals
     // This will be used by guidance and healing features
@@ -161,7 +162,8 @@ class AppState extends ChangeNotifier {
   /// Adds a crystal to the collection
   Future<void> addCrystal(Crystal crystal) async {
     if (_collectionService != null) {
-      await _collectionService!.addCrystal(crystal);
+      final unifiedData = _convertCrystalToUnified(crystal);
+      await _collectionService!.addCrystal(unifiedData);
       // notifyListeners will be called automatically through the collection service listener
     }
   }
@@ -179,12 +181,12 @@ class AppState extends ChangeNotifier {
     if (_collectionService != null) {
       // Find the collection entry ID for this crystal
       final entry = _collectionService!.collection.firstWhere(
-        (entry) => entry.crystal.id == updatedCrystal.id,
+        (entry) => entry.crystalCore.id == updatedCrystal.id,
         orElse: () => throw Exception('Crystal not found in collection'),
       );
       
       // Update using collection service
-      await _collectionService!.updateCrystal(entry.id);
+      await _collectionService!.updateCrystal(entry.crystalCore.id);
       // notifyListeners will be called automatically through the collection service listener
     }
   }
@@ -289,7 +291,7 @@ class AppState extends ChangeNotifier {
   List<Crystal> searchCrystals(String query) {
     if (_collectionService != null) {
       final searchResults = _collectionService!.searchCrystals(query);
-      return searchResults.map((entry) => entry.crystal).toList();
+      return searchResults.map((entry) => _convertUnifiedToCrystal(entry)).toList();
     }
     return [];
   }
@@ -319,6 +321,71 @@ class AppState extends ChangeNotifier {
     // TODO: Check SharedPreferences for first launch
     _isFirstLaunch = false; // For now
     _hasSeenOnboarding = true; // For now
+  }
+  
+  /// Convert UnifiedCrystalData to Crystal for compatibility
+  Crystal _convertUnifiedToCrystal(UnifiedCrystalData unifiedData) {
+    return Crystal(
+      id: unifiedData.crystalCore.id,
+      name: unifiedData.crystalCore.identification.stoneType,
+      scientificName: unifiedData.crystalCore.identification.crystalFamily,
+      category: unifiedData.crystalCore.identification.crystalFamily,
+      description: 'Beautiful ${unifiedData.crystalCore.identification.stoneType}',
+      chakras: unifiedData.crystalCore.metaphysicalProperties?.primaryChakras ?? [],
+      zodiacSigns: unifiedData.crystalCore.metaphysicalProperties?.zodiacSigns ?? [],
+      elements: unifiedData.crystalCore.metaphysicalProperties?.elements ?? [],
+      intentions: unifiedData.crystalCore.metaphysicalProperties?.intentions ?? [],
+      healingProperties: unifiedData.crystalCore.metaphysicalProperties?.healingProperties ?? [],
+      colors: [unifiedData.crystalCore.visualAnalysis.primaryColor],
+      hardness: unifiedData.crystalCore.physicalProperties?.hardness ?? 'Unknown',
+      crystalSystem: unifiedData.crystalCore.physicalProperties?.crystalSystem ?? 'Unknown',
+      transparency: unifiedData.crystalCore.visualAnalysis.transparency,
+      luster: unifiedData.crystalCore.physicalProperties?.luster ?? 'Unknown',
+      imageUrl: null,
+      sourceUrl: null,
+      aiGenerated: true,
+    );
+  }
+  
+  /// Convert Crystal to UnifiedCrystalData for compatibility
+  UnifiedCrystalData _convertCrystalToUnified(Crystal crystal) {
+    return UnifiedCrystalData(
+      crystalCore: CrystalCore(
+        id: crystal.id,
+        identification: Identification(
+          stoneType: crystal.name,
+          crystalFamily: crystal.category,
+          variety: null,
+          confidence: 0.95,
+        ),
+        visualAnalysis: VisualAnalysis(
+          primaryColor: crystal.colors.isNotEmpty ? crystal.colors.first : 'Unknown',
+          secondaryColors: crystal.colors.length > 1 ? crystal.colors.sublist(1) : [],
+          transparency: crystal.transparency,
+          formation: 'Natural',
+        ),
+        physicalProperties: PhysicalProperties(
+          hardness: crystal.hardness,
+          crystalSystem: crystal.crystalSystem,
+          luster: crystal.luster,
+          density: null,
+          chemicalFormula: null,
+        ),
+        metaphysicalProperties: MetaphysicalProperties(
+          primaryChakras: crystal.chakras,
+          zodiacSigns: crystal.zodiacSigns,
+          elements: crystal.elements,
+          intentions: crystal.intentions,
+          healingProperties: crystal.healingProperties,
+          planetaryRulers: [],
+        ),
+      ),
+      userIntegration: UserIntegration(
+        intentionSettings: crystal.intentions,
+        userExperiences: [],
+        addedToCollection: DateTime.now().toIso8601String(),
+      ),
+    );
   }
 }
 

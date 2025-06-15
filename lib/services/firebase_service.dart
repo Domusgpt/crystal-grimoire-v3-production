@@ -575,4 +575,21 @@ class FirebaseService extends ChangeNotifier {
       debugPrint('Activity tracking failed: $e');
     }
   }
+
+  /// Sync user profile to Firebase
+  Future<void> syncUserProfile(UserProfile userProfile) async {
+    if (!isAuthenticated) return;
+    
+    try {
+      await _firestore
+          .collection('users')
+          .doc(_currentUser!.uid)
+          .set(userProfile.toJson(), SetOptions(merge: true));
+      
+      debugPrint('✅ User profile synced to Firebase');
+    } catch (e) {
+      debugPrint('❌ Failed to sync user profile: $e');
+      throw e;
+    }
+  }
 }

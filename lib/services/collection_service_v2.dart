@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 // import '../models/crystal_collection.dart'; // Replaced by UnifiedCrystalData
 import '../models/crystal.dart'; // May still be used if methods construct UnifiedCrystalData from it
 import '../models/unified_crystal_data.dart';
+import '../models/collection_models.dart';
 import 'backend_service.dart'; // May not be directly used if all calls go via UnifiedDataService
 import 'firebase_service.dart'; // May still be used for non-crystal things or auth status
 import 'unified_data_service.dart';

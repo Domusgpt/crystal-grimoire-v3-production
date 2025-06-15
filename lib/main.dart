@@ -19,6 +19,7 @@ import 'services/firebase_service.dart';
 import 'services/stripe_service.dart';
 import 'services/ai_service.dart';
 import 'services/unified_data_service.dart';
+import 'services/backend_service.dart';
 import 'services/firebase_ai_service.dart';
 import 'services/unified_ai_service.dart';
 import 'services/feature_integration_service.dart';
@@ -131,17 +132,20 @@ class CrystalGrimoireApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => FirebaseService(),
         ),
+        Provider(create: (_) => BackendService()),
         
         // Core unified data service with Firebase Blaze features
-        ChangeNotifierProxyProvider2<FirebaseService, StorageService, UnifiedDataService>(
+        ChangeNotifierProxyProvider3<FirebaseService, StorageService, BackendService, UnifiedDataService>(
           create: (context) => UnifiedDataService(
             firebaseService: context.read<FirebaseService>(),
             storageService: context.read<StorageService>(),
+            backendService: context.read<BackendService>(),
           ),
-          update: (context, firebase, storage, previous) => 
+          update: (context, firebase, storage, backend, previous) => 
             previous ?? UnifiedDataService(
               firebaseService: firebase,
               storageService: storage,
+              backendService: backend,
             ),
         ),
         
@@ -155,12 +159,13 @@ class CrystalGrimoireApp extends StatelessWidget {
         ),
         
         // Collection service with Firebase integration
-        ChangeNotifierProxyProvider<FirebaseService, CollectionServiceV2>(
+        ChangeNotifierProxyProvider2<FirebaseService, UnifiedDataService, CollectionServiceV2>(
           create: (context) => CollectionServiceV2(
             firebaseService: context.read<FirebaseService>(),
+            unifiedDataService: context.read<UnifiedDataService>(),
           )..initialize(),
-          update: (context, firebase, previous) => 
-            previous ?? CollectionServiceV2(firebaseService: firebase)..initialize(),
+          update: (context, firebase, unified, previous) => 
+            previous ?? CollectionServiceV2(firebaseService: firebase, unifiedDataService: unified)..initialize(),
         ),
         
         // App state connected to collection service

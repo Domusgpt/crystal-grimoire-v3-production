@@ -9,60 +9,72 @@ from datetime import datetime
 # For now, we'll validate based on expected JSON structure.
 # from backend_server import UnifiedCrystalData # This would be ideal if importable
 
-# Updated SAMPLE_AI_RESPONSE_FULL to reflect the new simpler/flatter structure
-# requested by the simplified prompt.
+# SAMPLE_AI_RESPONSE_FULL now reflects the direct keys or keys within logical groups
+# as requested by the simplified prompt.
 SAMPLE_AI_RESPONSE_FULL = {
     "overall_confidence_score": 0.9,
-    # identification_details group
-    "stone_name": "Amethyst",
-    "variety": "Chevron Amethyst",
-    "crystal_family": "Quartz",
-    "identification_confidence": 0.95,
-    # visual_characteristics group
-    "primary_color": "Purple",
-    "secondary_colors": ["Violet", "White"],
-    "transparency": "Translucent",
-    "formation": "Cluster",
-    "size_estimate": "Medium",
-    # physical_properties_summary group
-    "hardness": "7",
-    "crystal_system": "Hexagonal",
-    # metaphysical_aspects group
-    "primary_chakra": "Third Eye",
-    "secondary_chakras": ["Crown"],
-    "vibration_level": "High",
-    "primary_zodiac_signs": ["Pisces", "Aquarius"],
-    "planetary_rulers": ["Jupiter"],
-    "elements": ["Water"],
-    # numerology_insights group (AI's attempt)
-    "crystal_number_association": 3, # AI might guess this for Amethyst
-    "color_vibration_number": 5,
-    "chakra_number_for_numerology": 6,
-    "master_numerology_number_suggestion": 5, # AI might guess this
-    # enrichment_details group
-    "crystal_bible_reference": "Page 123",
-    "healing_properties": ["Calming", "Intuition"],
-    "usage_suggestions": ["Meditation", "Sleep aid"],
-    "care_instructions": ["Cleanse monthly", "Avoid direct sunlight"],
-    "synergy_crystals": ["Clear Quartz", "Selenite"],
-    "mineral_class": "Silicate" # AI might provide this
+    "identification_details": {
+        "stone_name": "Amethyst",
+        "variety": "Chevron Amethyst",
+        "crystal_family": "Quartz",
+        "identification_confidence": 0.95
+    },
+    "visual_characteristics": {
+        "primary_color": "Purple",
+        "secondary_colors": ["Violet", "White"],
+        "transparency": "Translucent",
+        "formation": "Cluster",
+        "size_estimate": "Medium"
+    },
+    "physical_properties_summary": {
+        "hardness": "7",
+        "crystal_system": "Hexagonal"
+    },
+    "metaphysical_aspects": {
+        "primary_chakra": "Third Eye",
+        "secondary_chakras": ["Crown"],
+        "vibration_level": "High",
+        "primary_zodiac_signs": ["Pisces", "Aquarius"],
+        "planetary_rulers": ["Jupiter"], # Changed to list as per Pydantic, though prompt asks for string
+        "elements": ["Water"]           # Changed to list as per Pydantic
+    },
+    "numerology_insights": {
+        "crystal_number_association": 3,
+        "color_vibration_number": 5,
+        "chakra_number_for_numerology": 6,
+        "master_numerology_number_suggestion": 5
+    },
+    "enrichment_details": {
+        "crystal_bible_reference": "Page 123",
+        "healing_properties": ["Calming", "Intuition"],
+        "usage_suggestions": ["Meditation", "Sleep aid"],
+        "care_instructions": ["Cleanse monthly", "Avoid direct sunlight"],
+        "synergy_crystals": ["Clear Quartz", "Selenite"],
+        "mineral_class": "Silicate"
+    }
 }
 
-# Updated SAMPLE_AI_RESPONSE_MINIMAL_FOR_RULES for the new flatter structure
+# SAMPLE_AI_RESPONSE_MINIMAL_FOR_RULES reflects the simplified structure
 SAMPLE_AI_RESPONSE_MINIMAL_FOR_RULES = {
     "overall_confidence_score": 0.8,
-    "stone_name": "Jasper", # Numerology: J=1,A=1,S=1,P=7,E=5,R=9 -> 24 -> 6
-    "crystal_family": "Quartz", # Should map to Silicate if mineral_class not provided
-    "identification_confidence": 0.85,
-    "primary_color": "Red", # Should map to Root chakra, number 1, and signs Aries/Scorpio
-    "secondary_colors": [],
-    "transparency": "Opaque",
-    "formation": "Raw",
+    "identification_details": {
+        "stone_name": "Jasper",
+        "crystal_family": "Quartz", # For deriving mineral_class
+        "identification_confidence": 0.85
+    },
+    "visual_characteristics": {
+        "primary_color": "Red", # For chakra and sign fallback
+        "secondary_colors": [],
+        "transparency": "Opaque",
+        "formation": "Raw"
+    },
     # Metaphysical aspects largely missing for rule-based fallbacks
-    "healing_properties": ["Grounding"]
-    # mineral_class is missing, should be derived from crystal_family "Quartz"
-    # primary_chakra, chakra_number, primary_zodiac_signs missing for rule-based
-    # numerology numbers missing for calculation
+    "enrichment_details": { # Need at least one key from this group for parsing
+        "healing_properties": ["Grounding"]
+    }
+    # mineral_class is missing from enrichment_details
+    # primary_chakra, chakra_number, primary_zodiac_signs missing from metaphysical_aspects
+    # numerology numbers missing from numerology_insights
 }
 
 
@@ -92,60 +104,70 @@ def test_identify_crystal_success(test_client: TestClient, mocker):
     core = data['crystal_core']
     assert uuid.UUID(core['id'], version=4)
     assert datetime.fromisoformat(core['timestamp'].replace("Z", "+00:00"))
-    assert core['confidence_score'] == SAMPLE_AI_RESPONSE_FULL['overall_confidence_score'] # Mapped from top-level
+    assert core['confidence_score'] == SAMPLE_AI_RESPONSE_FULL['overall_confidence_score']
 
     va = core['visual_analysis']
-    assert va['primary_color'] == SAMPLE_AI_RESPONSE_FULL['primary_color']
-    assert va['formation'] == SAMPLE_AI_RESPONSE_FULL['formation']
+    expected_va = SAMPLE_AI_RESPONSE_FULL['visual_characteristics']
+    assert va['primary_color'] == expected_va['primary_color']
+    assert va['formation'] == expected_va['formation']
+    assert va['secondary_colors'] == expected_va['secondary_colors']
+    assert va['transparency'] == expected_va['transparency']
+    assert va['size_estimate'] == expected_va['size_estimate']
+
 
     ident = core['identification']
-    assert ident['stone_type'] == SAMPLE_AI_RESPONSE_FULL['stone_name']
-    assert ident['crystal_family'] == SAMPLE_AI_RESPONSE_FULL['crystal_family']
-    assert ident['variety'] == SAMPLE_AI_RESPONSE_FULL['variety']
-    assert ident['confidence'] == SAMPLE_AI_RESPONSE_FULL['identification_confidence']
+    expected_ident = SAMPLE_AI_RESPONSE_FULL['identification_details']
+    assert ident['stone_type'] == expected_ident['stone_name']
+    assert ident['crystal_family'] == expected_ident['crystal_family']
+    assert ident['variety'] == expected_ident['variety']
+    assert ident['confidence'] == expected_ident['identification_confidence']
 
 
     em = core['energy_mapping']
-    assert em['primary_chakra'] == SAMPLE_AI_RESPONSE_FULL['primary_chakra']
-    # chakra_number in energy_mapping is rule-based if AI doesn't provide it directly or if color mapping overrides
-    # For this full response, AI provides it via "chakra_number_for_numerology" which maps to energy_mapping.chakra_number
-    # if energy_mapping.chakra_number itself isn't directly in AI response's metaphysical_aspects.
-    # The mapping function prioritizes direct em_data.get("chakra_number", 0) from AI.
-    # Our sample AI response has "chakra_number_for_numerology" in "numerology_insights"
-    # The map_ai_response function was: final_chakra_number = ai_chakra_number (from em_data)
-    # Let's assume AI provides "chakra_number" under "metaphysical_aspects" for direct mapping.
-    # If not, the test or mapping needs adjustment. For now, assume it's provided or rule-based.
-    # For SAMPLE_AI_RESPONSE_FULL, it implies "primary_chakra": "Third Eye" -> number 6.
-    # The mapping logic: final_chakra_number = ai_chakra_number (from em_data.get("chakra_number"))
-    # If AI provides "chakra_number": 6 directly in metaphysical_aspects, this will pass.
-    # If not, color mapping for "Purple" (Third Eye) should yield 6.
-    assert em['chakra_number'] == 6 # Expected from "Third Eye" or direct AI numerology_insights.chakra_number_for_numerology
-    assert em['vibration_level'] == SAMPLE_AI_RESPONSE_FULL['vibration_level']
+    expected_em_ai = SAMPLE_AI_RESPONSE_FULL['metaphysical_aspects']
+    assert em['primary_chakra'] == expected_em_ai['primary_chakra']
+    assert em['secondary_chakras'] == expected_em_ai['secondary_chakras']
+    assert em['vibration_level'] == expected_em_ai['vibration_level']
+    # chakra_number is derived by rule (purple -> third eye -> 6) or from numerology_insights
+    assert em['chakra_number'] == 6
 
 
     ad = core['astrological_data']
-    assert ad['primary_signs'] == SAMPLE_AI_RESPONSE_FULL['primary_zodiac_signs']
-    assert ad['planetary_ruler'] == SAMPLE_AI_RESPONSE_FULL['planetary_rulers'][0] # Assuming first if list
-    assert ad['element'] == SAMPLE_AI_RESPONSE_FULL['elements'][0] # Assuming first if list
+    assert ad['primary_signs'] == expected_em_ai['primary_zodiac_signs']
+    assert ad['planetary_ruler'] == expected_em_ai['planetary_rulers'][0] # mapping takes first if list
+    assert ad['element'] == expected_em_ai['elements'][0] # mapping takes first if list
 
 
     num = core['numerology']
+    expected_num_ai = SAMPLE_AI_RESPONSE_FULL['numerology_insights']
     # Rule-based calculation for Amethyst (1+4+5+2+8+7+1+2 = 30 => 3)
     assert num['crystal_number'] == 3
-    # Master number: crystal_number=3 (rule), color_vibration=5 (AI), chakra_number=6 (rule/AI)
+    assert num['color_vibration'] == expected_num_ai['color_vibration_number']
+    assert num['chakra_number'] == expected_num_ai['chakra_number_for_numerology'] # from AI via numerology_insights
+    # Master number: crystal_number=3 (rule), color_vibration=5 (AI), chakra_number=6 (AI)
     # (3 + 5 + 6) = 14 => 1+4 = 5.
     assert num['master_number'] == 5
-    assert num['chakra_number'] == 6 # Consistent
 
 
     # Validate AutomaticEnrichment
     ae = data['automatic_enrichment']
-    assert ae['healing_properties'] == SAMPLE_AI_RESPONSE_FULL['healing_properties']
-    assert ae['mineral_class'] == SAMPLE_AI_RESPONSE_FULL['mineral_class']
+    expected_ae_ai = SAMPLE_AI_RESPONSE_FULL['enrichment_details']
+    assert ae['healing_properties'] == expected_ae_ai['healing_properties']
+    assert ae['mineral_class'] == expected_ae_ai['mineral_class']
+    assert ae['usage_suggestions'] == expected_ae_ai['usage_suggestions']
+    assert ae['care_instructions'] == expected_ae_ai['care_instructions']
+    assert ae['synergy_crystals'] == expected_ae_ai['synergy_crystals']
+    assert ae['crystal_bible_reference'] == expected_ae_ai['crystal_bible_reference']
 
-    # UserIntegration should be present with default/empty values
+    # UserIntegration should be present and be a dict (empty if no specific user data was part of identification)
+    # map_ai_response_to_unified_data initializes it as an empty UserIntegration object
     assert 'user_integration' in data
-    assert data['user_integration'] is None or isinstance(data['user_integration'], dict)
+    assert isinstance(data['user_integration'], dict)
+    # Since it's initialized empty by map_ai_response_to_unified_data, user_id should be None
+    assert data['user_integration'].get('user_id') is None
+    assert data['user_integration'].get('personal_rating') is None
+    assert data['user_integration'].get('user_experiences') == []
+    assert data['user_integration'].get('intention_settings') == []
 
 
 def test_identify_crystal_rule_based_fallbacks(test_client: TestClient, mocker):
