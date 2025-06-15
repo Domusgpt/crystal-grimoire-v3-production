@@ -295,3 +295,49 @@ Private and Proprietary. All rights reserved.
 ---
 
 **🔮 Remember: This is a unified spiritual experience platform, not just an app. Every feature should enhance the user's metaphysical journey. ✨**
+
+
+## Development Environment Setup
+
+This project includes a script to help set up a consistent development environment. The script will attempt to install or guide you through installing necessary tools like:
+
+*   Homebrew (macOS)
+*   nvm (Node Version Manager) and Node.js (for Firebase Functions)
+*   pyenv (Python Version Manager) and Python (if Python components are active)
+*   Flutter SDK (checks installation)
+*   Firebase CLI
+*   Google Cloud CLI
+*   GitHub CLI
+
+It will also run `flutter pub get` and `npm install` for the `functions` directory.
+
+**How to use the setup script:**
+
+1.  **Clone the repository:**
+    ```bash
+    git clone <repository_url>
+    cd CrystalGrimoire-Production
+    ```
+
+2.  **Make the script executable (if not already):**
+    Due to limitations in the automated environment that created this script, you might need to make it executable manually after pulling the changes:
+    ```bash
+    chmod +x scripts/setup_crystal_grimoire_env.sh
+    ```
+
+3.  **Run the script:**
+    ```bash
+    ./scripts/setup_crystal_grimoire_env.sh
+    ```
+
+4.  **Follow Prompts and Instructions:**
+    The script will print information about what it's doing. You may be prompted for your password (for `sudo` commands if installing system packages like build dependencies on Linux) or to complete authentication steps for CLIs (Firebase, gcloud, gh) in your browser.
+
+5.  **Restart Your Terminal:**
+    After the script finishes, it's highly recommended to close and reopen your terminal window or source your shell's configuration file (e.g., `source ~/.zshrc` or `source ~/.bashrc`). This ensures that all PATH changes and new tool installations are correctly loaded into your environment.
+
+6.  **Verify Installations:**
+    You can verify the installations by checking the versions of the tools (e.g., `flutter --version`, `firebase --version`, `node --version`, `python --version`). Run `flutter doctor` to ensure your Flutter environment is healthy.
+
+**Note on Python Setup:**
+The Python environment setup (using `pyenv`) within the script is controlled by the `PYTHON_SETUP_ENABLED` variable at the top of the script. If you don't need Python for your work on this project, you can set it to `""` or comment it out before running the script.
