@@ -13,7 +13,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict
 
-from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import FastAPI, HTTPException, UploadFile, File, BackgroundTasks, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -225,6 +225,33 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
     ai_secondary_chakras = em_data.get("secondary_chakras", [])
     ai_primary_signs = ad_data.get("primary_signs", [])
 
+    # --- NEW MAPPING LOGIC based on simplified AI response ---
+    # ai_response is now expected to be a flatter JSON object.
+    # We will use .get() extensively to access potential keys.
+
+    # Visual Analysis
+    visual_analysis = VisualAnalysis(
+        primary_color=ai_response.get("primary_color", "Unknown"),
+        secondary_colors=ai_response.get("secondary_colors", []),
+        transparency=ai_response.get("transparency", "Unknown"),
+        formation=ai_response.get("formation", "Unknown"),
+        size_estimate=ai_response.get("size_estimate")
+    )
+
+    # Identification
+    identification = Identification(
+        stone_type=ai_response.get("stone_name", ai_response.get("name", "Unknown")), # Allow 'name' or 'stone_name'
+        crystal_family=ai_response.get("crystal_family", "Unknown"),
+        variety=ai_response.get("variety"),
+        confidence=ai_response.get("identification_confidence", 0.0)
+    )
+
+    # Energy Mapping & Astrological Data from Color & AI
+    ai_primary_chakra = ai_response.get("primary_chakra", "Unknown")
+    ai_chakra_number = ai_response.get("chakra_number", 0) # AI might provide this directly
+    ai_secondary_chakras = ai_response.get("secondary_chakras", [])
+    ai_primary_signs = ai_response.get("primary_zodiac_signs", [])
+
     # Detailed Color-to-Chakra-Signs Mapping (from UNIFIED_DATA_MODEL.md)
     COLOR_CHAKRA_SIGN_MAP = {
         "red": {"primary_chakra": "root", "number": 1, "signs": ["aries", "scorpio"]},
@@ -329,7 +356,9 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
 
     # Attempt to derive mineral_class if not provided by AI and identification.crystal_family is known
     derived_mineral_class = None
-    if identification.crystal_family and identification.crystal_family != "Unknown":
+    ai_mineral_class = ai_response.get("mineral_class") # Check if AI provides it directly
+
+    if not ai_mineral_class and identification.crystal_family and identification.crystal_family != "Unknown":
         CRYSTAL_FAMILY_TO_MINERAL_CLASS = {
             "quartz": "Silicate",
             "feldspar": "Silicate",
@@ -365,12 +394,12 @@ def map_ai_response_to_unified_data(ai_response: Dict) -> UnifiedCrystalData:
         derived_mineral_class = CRYSTAL_FAMILY_TO_MINERAL_CLASS.get(identification.crystal_family.lower())
 
     automatic_enrichment = AutomaticEnrichment(
-        crystal_bible_reference=ae_data.get("crystal_bible_reference"),
-        healing_properties=ae_data.get("healing_properties", []),
-        usage_suggestions=ae_data.get("usage_suggestions", []),
-        care_instructions=ae_data.get("care_instructions", []),
-        synergy_crystals=ae_data.get("synergy_crystals", []),
-        mineral_class=ae_data.get("mineral_class") or derived_mineral_class # Prioritize AI, then rule
+        crystal_bible_reference=ai_response.get("crystal_bible_reference"),
+        healing_properties=ai_response.get("healing_properties", []),
+        usage_suggestions=ai_response.get("usage_suggestions", []),
+        care_instructions=ai_response.get("care_instructions", []),
+        synergy_crystals=ai_response.get("synergy_crystals", []),
+        mineral_class=ai_mineral_class or derived_mineral_class # Prioritize AI, then rule
     )
 
     # UserIntegration will be minimal for now
@@ -399,51 +428,66 @@ class AIService:
         
         Return ONLY valid JSON with the following structure. Populate all fields as accurately as possible.
         If a list can have multiple values, provide them. If a value is unknown, use null or an empty list as appropriate.
-        Provide a confidence_score (0.0 to 1.0) for the overall identification accuracy.
+        You are an expert crystal identification and metaphysical guidance system.
+        Analyze the provided crystal image and return a single, valid JSON object containing comprehensive information.
 
-        {{
-          "crystal_core": {{
-            "confidence_score": 0.85, // Overall confidence in the entire identification
-            "visual_analysis": {{
-              "primary_color": "string",
-              "secondary_colors": ["string", "string"],
-              "transparency": "string (e.g., transparent, translucent, opaque)",
-              "formation": "string (e.g., cluster, point, tumbled, geode, raw)",
-              "size_estimate": "string (e.g., small, medium, large)"
-            }},
-            "identification": {{
-              "stone_type": "string (e.g., amethyst)",
-              "crystal_family": "string (e.g., quartz)",
-              "variety": "string (e.g., chevron_amethyst, brandberg)",
-              "confidence": 0.95 // Confidence for this specific stone_type identification
-            }},
-            "energy_mapping": {{
-              "primary_chakra": "string (e.g., third_eye, root)",
-              "secondary_chakras": ["string", "string"],
-              "chakra_number": "integer (e.g., 6 for Third Eye)",
-              "vibration_level": "string (e.g., high, medium, low, very high)"
-            }},
-            "astrological_data": {{
-              "primary_signs": ["string (e.g., pisces, aquarius)"],
-              "compatible_signs": ["string", "string"],
-              "planetary_ruler": "string (e.g., jupiter, neptune)",
-              "element": "string (e.g., water, air)"
-            }},
-            "numerology": {{ // Provide best estimates based on common associations
-              "crystal_number": "integer",
-              "color_vibration": "integer",
-              "chakra_number": "integer", // Should match energy_mapping.chakra_number
-              "master_number": "integer"
-            }}
-          }},
-          "automatic_enrichment": {{
-            "crystal_bible_reference": "string (e.g., 'The Crystal Bible, page 123')",
-            "healing_properties": ["string", "string"],
-            "usage_suggestions": ["string", "string"],
-            "care_instructions": ["string (cleansing methods)", "string (charging methods)", "string (storage)"],
-            "synergy_crystals": ["string (compatible crystal names)", "string"]
+        USER CONTEXT: {json.dumps(user_context) if user_context else 'None provided'}
+
+        Please provide the following details in the JSON response, using the specified or similar keys.
+        If a value is unknown or not applicable, you can omit the key or use a null/empty value.
+        Strive for accuracy and completeness.
+
+        KEY INFORMATION TO INCLUDE:
+        - "overall_confidence_score": Your confidence (0.0 to 1.0) in the overall identification and data provided.
+
+        - "identification_details": {{
+            "stone_name": "string (common name, e.g., Amethyst)",
+            "variety": "string (e.g., Chevron Amethyst, Siberian Amethyst, optional)",
+            "crystal_family": "string (e.g., Quartz, Feldspar, Beryl, optional)",
+            "identification_confidence": "float (0.0 to 1.0, confidence in the stone_name itself)"
           }}
-        }}
+
+        - "visual_characteristics": {{
+            "primary_color": "string",
+            "secondary_colors": ["string", "string", "..."],
+            "transparency": "string (e.g., Transparent, Translucent, Opaque)",
+            "formation": "string (e.g., Cluster, Point, Tumbled, Geode, Raw, Massive)",
+            "size_estimate": "string (e.g., Small, Medium, Large, optional)"
+          }}
+
+        - "physical_properties_summary": {{
+            "hardness": "string (Mohs scale, e.g., '7', optional)",
+            "crystal_system": "string (e.g., Hexagonal, Trigonal, Cubic, optional)"
+          }}
+
+        - "metaphysical_aspects": {{
+            "primary_chakra": "string (e.g., Third Eye, Root Chakra)",
+            "secondary_chakras": ["string", "string", "... (optional)"],
+            "vibration_level": "string (e.g., High, Medium, Low, Very High, optional)",
+            "primary_zodiac_signs": ["string", "string", "... (associated Zodiac signs)"],
+            "planetary_rulers": ["string", "string", "... (associated planets, optional)"],
+            "elements": ["string", "string", "... (associated elements, e.g., Water, Earth, optional)"]
+          }}
+
+        - "numerology_insights": {{ // Your best estimate for numerological values, if possible
+            "crystal_number_association": "integer (optional)",
+            "color_vibration_number": "integer (optional)",
+            "chakra_number_for_numerology": "integer (optional, e.g., 6 for Third Eye)",
+            "master_numerology_number_suggestion": "integer (optional)"
+          }}
+
+        - "enrichment_details": {{
+            "healing_properties": ["string", "string", "... (key healing benefits)"],
+            "usage_suggestions": ["string", "string", "... (how to use the crystal)"],
+            "care_instructions": ["string (cleansing methods)", "string (charging methods)", "string (storage advice)"],
+            "synergy_crystals": ["string (compatible crystal names)", "string", "... (optional)"],
+            "crystal_bible_reference": "string (e.g., 'The Crystal Bible, page 123', optional)",
+            "mineral_class": "string (e.g., Silicate, Oxide, Carbonate, optional)"
+          }}
+
+        Ensure the entire output is a single valid JSON object.
+        Example for a key: "stone_name": "Amethyst"
+        Example for a list: "healing_properties": ["Promotes calmness", "Enhances intuition"]
         """
         
         try:
@@ -474,12 +518,13 @@ class AIService:
                 
                 # Clean up the response to ensure valid JSON
                 content = content.strip()
-                if content.startswith('```json'):
-                    content = content[7:]
-                if content.endswith('```'):
-                    content = content[:-3]
-                content = content.strip()
-                
+                # Remove markdown ```json and ``` if present
+                if content.startswith("```json") and content.endswith("```"):
+                    content = content[7:-3].strip()
+                elif content.startswith("```") and content.endswith("```"): # More generic markdown block
+                    content = content[3:-3].strip()
+
+                logger.debug(f"Cleaned AI Response: {content}")
                 return json.loads(content)
                 
         except json.JSONDecodeError as e:
@@ -560,7 +605,7 @@ async def identify_crystal(request: CrystalIdentificationRequest):
             # source_ai = "gpt-4-vision"
         else:
             raise HTTPException(status_code=503, detail="No AI services configured for identification.")
-        
+
         # Map the raw AI JSON response to our UnifiedCrystalData model
         unified_data = map_ai_response_to_unified_data(ai_json_response)
 
@@ -599,6 +644,19 @@ async def get_crystal_collection():
 async def create_crystal(crystal_data: UnifiedCrystalData):
     if not crystals_collection:
         raise HTTPException(status_code=503, detail="Firestore not available")
+
+    # --- User ID Validation Placeholder ---
+    # When full authentication is implemented:
+    # 1. Extract authenticated_user_id from the request's auth token (e.g., provided by a dependency).
+    # 2. Compare with crystal_data.user_integration.user_id.
+    # Example:
+    # if authenticated_user_id != crystal_data.user_integration.user_id:
+    #     raise HTTPException(status_code=403, detail="User ID in token does not match user_id in request body.")
+    # --- End Placeholder ---
+
+    if not crystal_data.user_integration or not crystal_data.user_integration.user_id:
+        raise HTTPException(status_code=422, detail="UserIntegration with a valid user_id is required to save a crystal to a collection.")
+
     try:
         # Use crystal_core.id as the document ID in Firestore
         doc_ref = crystals_collection.document(crystal_data.crystal_core.id)

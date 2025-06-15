@@ -16,10 +16,10 @@ class UnifiedDataService extends ChangeNotifier {
   final FirebaseService _firebaseService;
   final StorageService _storageService;
   final ParseOperatorService _parseOperatorService;
-  // BackendService is used via static methods, no instance needed here for now.
+  final BackendService _backendService; // Added BackendService instance
 
   UserProfile? _userProfile;
-  List<UnifiedCrystalData> _crystalCollection = []; // Changed type
+  List<UnifiedCrystalData> _crystalCollection = [];
   List<JournalEntry> _journalEntries = [];
   Map<String, dynamic> _spiritualContext = {};
   
@@ -30,16 +30,19 @@ class UnifiedDataService extends ChangeNotifier {
   UnifiedDataService({
     required FirebaseService firebaseService,
     required StorageService storageService,
+    required BackendService backendService, // Require BackendService
     ParseOperatorService? parseOperatorService,
   }) : _firebaseService = firebaseService,
        _storageService = storageService,
+       _backendService = backendService, // Initialize
        _parseOperatorService = parseOperatorService ?? ParseOperatorService();
   
   // Getters
   UserProfile? get userProfile => _userProfile;
-  List<UnifiedCrystalData> get crystalCollection => _crystalCollection; // Changed type
+  List<UnifiedCrystalData> get crystalCollection => _crystalCollection;
   List<JournalEntry> get journalEntries => _journalEntries;
-  bool get isAuthenticated => _firebaseService.isAuthenticated; // Or BackendService.isAuthenticated
+  // isAuthenticated might now defer to _backendService or _firebaseService depending on what it means
+  bool get isAuthenticated => _backendService.isAuthenticated; // Assuming BackendService now holds auth state
   bool get isPremiumUser => _userProfile?.subscriptionTier != SubscriptionTier.free;
   
   /// Initialize data service
@@ -57,11 +60,12 @@ class UnifiedDataService extends ChangeNotifier {
       // Load crystal collection from Backend if authenticated
       // Assuming BackendService handles its own auth checks or uses stored auth state.
       // For this service, we might rely on _firebaseService.isAuthenticated for UI enabling data loading.
-      if (BackendService.isAuthenticated) { // Check if we should attempt to load
+      // Or more directly, _backendService.isAuthenticated and _backendService.currentUserId
+      if (_backendService.isAuthenticated && _backendService.currentUserId != null) {
         try {
-          _crystalCollection = await BackendService.getUserCollection();
+          _crystalCollection = await _backendService.getUserCollection(userId: _backendService.currentUserId!);
         } catch (e) {
-          debugPrint('Failed to load crystal collection from backend: $e');
+          debugPrint('Failed to load user-specific crystal collection from backend: $e');
           // Potentially load from a local cache if backend fails? For now, empty.
           _crystalCollection = [];
         }
@@ -139,31 +143,29 @@ class UnifiedDataService extends ChangeNotifier {
   
   /// Add crystal to collection
   Future<void> addCrystal(UnifiedCrystalData crystalData) async {
-    if (!BackendService.isAuthenticated) {
+    if (!_backendService.isAuthenticated) {
       // Or throw error, or handle anonymous additions differently if supported
       debugPrint("User not authenticated. Cannot add crystal via BackendService.");
       return;
     }
     try {
       // Set user_id if not already set and available
-      final currentUserId = BackendService.currentUserId; // Assuming BackendService holds this
+      final currentUserId = _backendService.currentUserId; // Use instance
       final userIntegration = crystalData.userIntegration ?? UserIntegration(intentionSettings: [], userExperiences: []);
-      final updatedUserIntegration = UserIntegration(
-        userId: userIntegration.userId ?? currentUserId,
-        addedToCollection: userIntegration.addedToCollection ?? DateTime.now().toIso8601String(),
-        personalRating: userIntegration.personalRating,
-        usageFrequency: userIntegration.usageFrequency,
-        userExperiences: userIntegration.userExperiences,
-        intentionSettings: userIntegration.intentionSettings,
-      );
-      final dataToSave = UnifiedCrystalData(
-        crystalCore: crystalData.crystalCore,
-        userIntegration: updatedUserIntegration,
-        automaticEnrichment: crystalData.automaticEnrichment
-      );
 
-      final savedCrystal = await BackendService.saveCrystal(dataToSave);
-      _crystalCollection.add(savedCrystal); // Add the backend-confirmed crystal
+      // Ensure user_id is set on the UserIntegration object
+      // If crystalData is immutable, we need a copyWith or similar pattern
+      // Assuming UserIntegration has a copyWith or is mutable for this example.
+      // For a robust solution with immutable models, UserIntegration should have a copyWith method.
+      // Let's assume it's mutable or has copyWith for simplicity here.
+      UserIntegration finalUserIntegration = userIntegration.userId == null || userIntegration.userId!.isEmpty
+          ? userIntegration.copyWith(userId: currentUserId, addedToCollection: userIntegration.addedToCollection ?? DateTime.now().toIso8601String())
+          : userIntegration.copyWith(addedToCollection: userIntegration.addedToCollection ?? DateTime.now().toIso8601String());
+
+      final dataToSave = crystalData.copyWith(userIntegration: finalUserIntegration);
+
+      final savedCrystal = await _backendService.saveCrystal(dataToSave);
+      _crystalCollection.add(savedCrystal);
 
       // Track activity (optional, can remain if using Firebase for analytics)
       await _firebaseService.trackUserActivity('crystal_added', {
@@ -182,12 +184,24 @@ class UnifiedDataService extends ChangeNotifier {
 
   /// Update crystal in collection
   Future<void> updateCrystal(UnifiedCrystalData crystalData) async {
-     if (!BackendService.isAuthenticated) {
+     if (!_backendService.isAuthenticated) { // Use instance
       debugPrint("User not authenticated. Cannot update crystal via BackendService.");
       return;
     }
     try {
-      final updatedCrystal = await BackendService.updateCrystal(crystalData);
+      // Ensure user_id is present if it's meant to be validated or part of the update logic
+      if (crystalData.userIntegration?.userId == null || crystalData.userIntegration!.userId!.isEmpty) {
+          final currentUserId = _backendService.currentUserId;
+          if (currentUserId != null && currentUserId.isNotEmpty) {
+            crystalData.userIntegration = (crystalData.userIntegration ?? UserIntegration(intentionSettings: [], userExperiences: []))
+                                            .copyWith(userId: currentUserId);
+          } else {
+            // Handle case where user_id is essential but cannot be determined
+            debugPrint("Warning: Updating crystal without a user_id in userIntegration.");
+          }
+      }
+
+      final updatedCrystal = await _backendService.updateCrystal(crystalData);
       final index = _crystalCollection.indexWhere((c) => c.crystalCore.id == updatedCrystal.crystalCore.id);
       if (index != -1) {
         _crystalCollection[index] = updatedCrystal;
@@ -206,12 +220,12 @@ class UnifiedDataService extends ChangeNotifier {
 
   /// Remove crystal from collection
   Future<void> removeCrystal(String crystalId) async {
-    if (!BackendService.isAuthenticated) {
+    if (!_backendService.isAuthenticated) { // Use instance
       debugPrint("User not authenticated. Cannot remove crystal via BackendService.");
       return;
     }
     try {
-      await BackendService.deleteCrystal(crystalId);
+      await _backendService.deleteCrystal(crystalId); // Use instance
       _crystalCollection.removeWhere((c) => c.crystalCore.id == crystalId);
       _updateSpiritualContext();
       notifyListeners();

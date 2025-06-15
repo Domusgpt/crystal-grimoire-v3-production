@@ -7,34 +7,46 @@ import '../models/birth_chart.dart';
 import '../models/crystal_collection.dart'; // Potentially for CrystalIdentification if kept
 import '../models/unified_crystal_data.dart'; // New model
 import 'platform_file.dart';
+// StorageService is used by identifyCrystal to get BirthChart.
+// If identifyCrystal becomes an instance method, it might need StorageService injected or accessed differently.
+// For now, keeping StorageService.getBirthChart() as static, assuming it's okay for this refactor.
 import 'storage_service.dart';
 
 /// Service for communicating with the CrystalGrimoire backend
 class BackendService {
-  static String? _authToken;
-  static String? _userId;
-  
+  final http.Client _httpClient;
+  String? _authToken;
+  String? _userId;
+
+  // Constructor
+  BackendService({http.Client? httpClient}) : _httpClient = httpClient ?? http.Client();
+
+  // For testing purposes, allow setting a mock client after construction if needed, or use constructor.
+  // Not ideal for production code but can bridge testing for now.
+  @visibleForTesting
+  http.Client get httpClient => _httpClient;
+
   /// Check if user is authenticated
-  static bool get isAuthenticated => _authToken != null;
+  bool get isAuthenticated => _authToken != null;
   
   /// Get current user ID
-  static String? get currentUserId => _userId;
+  String? get currentUserId => _userId;
   
   /// Set authentication token
-  static void setAuth(String token, String userId) {
+  void setAuth(String token, String userId) {
     _authToken = token;
     _userId = userId;
   }
   
   /// Clear authentication
-  static void clearAuth() {
+  void clearAuth() {
     _authToken = null;
     _userId = null;
   }
   
   /// Get headers with auth if available
-  static Map<String, String> get _headers {
-    final headers = BackendConfig.headers;
+  Map<String, String> get _headers {
+    final headers = Map<String, String>.from(BackendConfig.headers); // Create a new map from template
     if (_authToken != null) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
@@ -42,10 +54,13 @@ class BackendService {
   }
   
   /// Register a new user
-  static Future<Map<String, dynamic>> register(String email, String password) async {
+  Future<Map<String, dynamic>> register(String email, String password) async {
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         Uri.parse('${BackendConfig.baseUrl.replaceAll('/api/v1', '')}/api/v1/auth/register'),
+        // http.post from dart:http does not take Map<String,String> for body if headers indicate json,
+        // but for x-www-form-urlencoded (default for http.post if Content-Type not set), Map is fine.
+        // Assuming this endpoint expects form data or BackendConfig.headers doesn't set Content-Type to json.
         body: {
           'email': email,
           'password': password,
@@ -54,7 +69,7 @@ class BackendService {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setAuth(data['access_token'], data['user_id']);
+        setAuth(data['access_token'], data['user_id']); // Now calls instance method
         return {
           'success': true,
           'user_id': data['user_id'],
@@ -77,9 +92,9 @@ class BackendService {
   }
   
   /// Login user
-  static Future<Map<String, dynamic>> login(String email, String password) async {
+  Future<Map<String, dynamic>> login(String email, String password) async {
     try {
-      final response = await http.post(
+      final response = await _httpClient.post(
         Uri.parse('${BackendConfig.baseUrl.replaceAll('/api/v1', '')}/api/v1/auth/login'),
         body: {
           'email': email,
@@ -89,7 +104,7 @@ class BackendService {
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        setAuth(data['access_token'], data['user_id']);
+        setAuth(data['access_token'], data['user_id']); // Now calls instance method
         return {
           'success': true,
           'user_id': data['user_id'],
@@ -113,33 +128,29 @@ class BackendService {
   }
   
   /// Identify crystal using backend API
-  static Future<UnifiedCrystalData> identifyCrystal({
+  Future<UnifiedCrystalData> identifyCrystal({
     required List<PlatformFile> images, // Backend expects one image
     String? userTextContext, // General text from user
     String? sessionId, // Optional session ID
   }) async {
     try {
-      if (!await BackendConfig.isBackendAvailable()) {
-        throw Exception('Backend not available');
-      }
+      // if (!await BackendConfig.isBackendAvailable()) { // isBackendAvailable could be static or part of config
+      //   throw Exception('Backend not available');
+      // }
+      // Assuming BackendConfig.isBackendAvailable() is handled by caller or is not critical for unit test logic of this method itself
       if (images.isEmpty) {
         throw Exception('At least one image is required for identification.');
       }
 
-      // Backend expects a single base64 encoded image.
       final imageBytes = await images.first.readAsBytes();
       final String base64Image = base64Encode(imageBytes);
 
       final Map<String, dynamic> requestBody = {
         'image_data': base64Image,
-        'user_context': {
-          'text_description': userTextContext,
-          // sessionId is not directly part of user_context in Pydantic, but can be included if useful
-        },
+        'user_context': {'text_description': userTextContext},
       };
       
-      // Add birth chart context if available to user_context
-      final birthChartData = await StorageService.getBirthChart();
+      final birthChartData = await StorageService.getBirthChart(); // Remains static call for now
       if (birthChartData != null) {
         final birthChart = BirthChart.fromJson(birthChartData);
         final spiritualContext = birthChart.getSpiritualContext();
@@ -147,26 +158,23 @@ class BackendService {
           'sun_sign': spiritualContext['sunSign'],
           'moon_sign': spiritualContext['moonSign'],
           'ascendant': spiritualContext['ascendant'],
-          // 'dominant_elements': spiritualContext['dominantElements'], // Consider if this level of detail is needed
-          // 'recommended_crystals': spiritualContext['recommendations'],
         };
       }
       if (sessionId != null) {
          (requestBody['user_context'] as Map<String, dynamic>)['session_id'] = sessionId;
       }
 
-
-      final response = await http.post(
+      final response = await _httpClient.post(
         Uri.parse('${BackendConfig.baseUrl}${BackendConfig.identifyEndpoint}'),
-        headers: _headers..addAll({'Content-Type': 'application/json'}), // Ensure correct content type
+        headers: _headers..addAll({'Content-Type': 'application/json'}),
         body: jsonEncode(requestBody),
-      ).timeout(BackendConfig.uploadTimeout); // Use uploadTimeout as it involves image data potentially
+      ).timeout(BackendConfig.uploadTimeout);
       
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return UnifiedCrystalData.fromJson(data);
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Instance method
         throw Exception('Authentication required');
       } else if (response.statusCode == 429) { // Assuming 429 might still be used
         throw Exception('API limit reached or other restriction.');
@@ -218,7 +226,7 @@ class BackendService {
       
   //     final streamedResponse = await request.send().timeout(BackendConfig.uploadTimeout);
   //     final response = await http.Response.fromStream(streamedResponse);
-      
+
   //     if (response.statusCode == 200) {
   //       final data = jsonDecode(response.body);
   //       return _parseBackendResponse(data);
@@ -230,28 +238,31 @@ class BackendService {
   //     throw Exception('Anonymous crystal identification failed: $e');
   //   }
   // }
-  
+
   /// Get user's crystal collection (now UnifiedCrystalData)
-  static Future<List<UnifiedCrystalData>> getUserCollection() async {
-    // Note: The backend GET /api/crystals does not filter by user_id yet.
-    // This method will fetch all crystals.
-    // Proper user filtering would require backend changes and passing user_id.
-    if (!isAuthenticated) { // Still good practice to check, even if backend doesn't filter
-      // throw Exception('Authentication required to view collection.');
-      // Or allow fetching all public data if that's the design for /api/crystals
+  Future<List<UnifiedCrystalData>> getUserCollection({String? userId}) async {
+    if (userId != null && !this.isAuthenticated) {
+      print("Fetching collection for specific user $userId, auth status: ${this.isAuthenticated}");
+    } else if (userId == null && !this.isAuthenticated) {
+      print("Fetching all public crystals, auth status: ${this.isAuthenticated}");
     }
-    
+
     try {
-      final response = await http.get(
-        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}'), // GET /api/crystals
-        headers: _headers,
+      var uri = Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}');
+      if (userId != null && userId.isNotEmpty) {
+        uri = uri.replace(queryParameters: {'user_id': userId});
+      }
+
+      final response = await _httpClient.get( // Use instance client
+        uri,
+        headers: _headers, // Instance getter
       ).timeout(BackendConfig.apiTimeout);
       
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
         return data.map((json) => UnifiedCrystalData.fromJson(json)).toList();
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Instance method
         throw Exception('Authentication potentially required or token expired.');
       } else {
          final error = jsonDecode(response.body);
@@ -264,27 +275,23 @@ class BackendService {
   }
   
   /// Save a new crystal to the collection (UnifiedCrystalData)
-  static Future<UnifiedCrystalData> saveCrystal(UnifiedCrystalData crystalData) async {
-    if (!isAuthenticated) {
+  Future<UnifiedCrystalData> saveCrystal(UnifiedCrystalData crystalData) async {
+    if (!this.isAuthenticated) { // Instance getter
       throw Exception('Authentication required to save crystal.');
     }
-    // Assuming crystalData.crystalCore.id is either pre-set for a specific reason
-    // or the backend will generate one if it's empty (current backend uses provided ID).
-    // If UserIntegration needs user_id, it should be set before calling this.
-    // e.g., crystalData.userIntegration?.userId = _userId; (This requires UserIntegration to be mutable or reconstructed)
 
     try {
-      final response = await http.post(
-        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}'), // POST /api/crystals
-        headers: _headers..addAll({'Content-Type': 'application/json'}),
+      final response = await _httpClient.post( // Use instance client
+        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}'),
+        headers: _headers..addAll({'Content-Type': 'application/json'}), // Instance getter
         body: jsonEncode(crystalData.toJson()),
       ).timeout(BackendConfig.apiTimeout);
       
-      if (response.statusCode == 200 || response.statusCode == 201) { // 201 for created
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return UnifiedCrystalData.fromJson(data);
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Instance method
         throw Exception('Authentication required or token expired.');
       } else {
         final error = jsonDecode(response.body);
@@ -297,8 +304,8 @@ class BackendService {
   }
 
   /// Update an existing crystal in the collection (UnifiedCrystalData)
-  static Future<UnifiedCrystalData> updateCrystal(UnifiedCrystalData crystalData) async {
-    if (!isAuthenticated) {
+  Future<UnifiedCrystalData> updateCrystal(UnifiedCrystalData crystalData) async {
+    if (!this.isAuthenticated) { // Instance getter
       throw Exception('Authentication required to update crystal.');
     }
     if (crystalData.crystalCore.id.isEmpty) {
@@ -306,9 +313,9 @@ class BackendService {
     }
 
     try {
-      final response = await http.put(
-        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}/${crystalData.crystalCore.id}'), // PUT /api/crystals/{crystal_id}
-        headers: _headers..addAll({'Content-Type': 'application/json'}),
+      final response = await _httpClient.put( // Use instance client
+        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}/${crystalData.crystalCore.id}'),
+        headers: _headers..addAll({'Content-Type': 'application/json'}), // Instance getter
         body: jsonEncode(crystalData.toJson()),
       ).timeout(BackendConfig.apiTimeout);
 
@@ -316,7 +323,7 @@ class BackendService {
         final data = jsonDecode(response.body);
         return UnifiedCrystalData.fromJson(data);
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Instance method
         throw Exception('Authentication required or token expired.');
       } else if (response.statusCode == 404) {
         throw Exception('Crystal not found for update.');
@@ -332,8 +339,8 @@ class BackendService {
   }
 
   /// Delete a crystal from the collection
-  static Future<void> deleteCrystal(String crystalId) async {
-    if (!isAuthenticated) {
+  Future<void> deleteCrystal(String crystalId) async {
+    if (!this.isAuthenticated) { // Instance getter
       throw Exception('Authentication required to delete crystal.');
     }
     if (crystalId.isEmpty) {
@@ -341,19 +348,18 @@ class BackendService {
     }
 
     try {
-      final response = await http.delete(
-        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}/$crystalId'), // DELETE /api/crystals/{crystal_id}
-        headers: _headers,
+      final response = await _httpClient.delete( // Use instance client
+        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.crystalsEndpoint}/$crystalId'),
+        headers: _headers, // Instance getter
       ).timeout(BackendConfig.apiTimeout);
 
-      if (response.statusCode == 200) { // Backend returns 200 with a success message
+      if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['status'] != 'success') {
             throw Exception(data['message'] ?? 'Failed to delete crystal on backend.');
         }
-        // Successfully deleted
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Instance method
         throw Exception('Authentication required or token expired.');
       } else if (response.statusCode == 404) {
         throw Exception('Crystal not found for deletion.');

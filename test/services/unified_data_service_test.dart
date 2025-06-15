@@ -50,138 +50,105 @@ void main() {
     when(mockFirebaseService.isAuthenticated).thenReturn(false);
     when(mockBackendService.getUserCollection()).thenAnswer((_) async => []); // Default to empty collection
 
-    // Mock static BackendService.isAuthenticated and BackendService.currentUserId
-    // This is tricky because they are static. The actual BackendService calls these.
-    // For UDS tests, we need to control what UDS *thinks* BackendService's auth state is.
-    // This implies UDS should use the injected mockBackendService for auth status,
-    // or BackendService itself needs a static way to set this for tests.
-    // The current UDS uses BackendService.isAuthenticated directly.
-    // To test this properly, BackendService.isAuthenticated should be mockable.
-    // For now, we'll assume we can influence this, e.g. by setting a static test flag in BackendService
-    // or by having UDS call a method on its (mocked) BackendService instance for auth status.
-    // The UDS code uses `BackendService.isAuthenticated` not `_firebaseService.isAuthenticated` for crystal ops.
-    // This requires `BackendService.isAuthenticated` to be mockable, which isn't straightforward for static getters.
-    // I will write tests assuming this can be controlled for different test scenarios.
+    // Default behaviors for mockBackendService instance methods
+    when(mockBackendService.isAuthenticated).thenReturn(false);
+    when(mockBackendService.currentUserId).thenReturn(null);
+    when(mockBackendService.getUserCollection(userId: anyNamed('userId'))).thenAnswer((_) async => []);
+    when(mockBackendService.saveCrystal(any)).thenAnswer((realInvocation) async => realInvocation.positionalArguments.first as UnifiedCrystalData);
+    when(mockBackendService.updateCrystal(any)).thenAnswer((realInvocation) async => realInvocation.positionalArguments.first as UnifiedCrystalData);
+    when(mockBackendService.deleteCrystal(any)).thenAnswer((_) async => {});
+
 
     unifiedDataService = UnifiedDataService(
       firebaseService: mockFirebaseService,
       storageService: mockStorageService,
+      backendService: mockBackendService, // Inject the mock
       // ParseOperatorService can be omitted if not central to the tested logic or a simple mock used
     );
   });
 
   group('Initialization', () {
     test('initializes with empty collection if not authenticated', () async {
-      // Assuming BackendService.isAuthenticated is false (default or set for this test)
-      // This requires a way to mock BackendService.isAuthenticated
-      // For now, we test the consequence: getUserCollection is not called if not auth.
-      // UDS's initialize() calls BackendService.getUserCollection() if BackendService.isAuthenticated is true.
-      // So, if we can't mock the static getter, we ensure it's false for this test.
-      // Let's assume a hypothetical static setter for testing:
-      // BackendService.setAuthenticatedForTesting(false); // Needs to be added to BackendService
+      when(mockBackendService.isAuthenticated).thenReturn(false);
+      when(mockBackendService.currentUserId).thenReturn(null);
 
       await unifiedDataService.initialize();
 
       expect(unifiedDataService.crystalCollection, isEmpty);
-      verifyNever(mockBackendService.getUserCollection()); // This verify will fail if UDS calls static BackendService.getUserCollection
-                                                          // and we haven't mocked the static method via a test helper.
-                                                          // It should verify the instance if UDS was refactored to use instance.
+      // Verify that getUserCollection was NOT called with any user ID
+      verifyNever(mockBackendService.getUserCollection(userId: anyNamed('userId')));
     });
 
     test('loads crystal collection from BackendService if authenticated', () async {
-      // Need to mock static BackendService.isAuthenticated = true for this path in UDS.
-      // And BackendService.getUserCollection()
-      // This test highlights the difficulty of testing static dependencies.
-      // For now, this test is more of a placeholder for how it *should* work with mockable statics.
-
       final crystals = [sampleCrystalData("id1", "Testinite")];
-      // Assume BackendService.isAuthenticated returns true for this scenario
-      // when(mockBackendService.isAuthenticated).thenReturn(true); // If it were an instance method
-      // For static: BackendService.setAuthenticatedForTesting(true);
+      when(mockBackendService.isAuthenticated).thenReturn(true);
+      when(mockBackendService.currentUserId).thenReturn("user123");
+      when(mockBackendService.getUserCollection(userId: "user123")).thenAnswer((_) async => crystals);
 
-      // If UDS used an instance of BackendService:
-      // when(mockBackendService.getUserCollection()).thenAnswer((_) async => crystals);
+      await unifiedDataService.initialize();
 
-      // To mock the static BackendService.getUserCollection, it's complex.
-      // We'd typically refactor BackendService to use an injectable HTTP client, and then
-      // test BackendService separately. Then for UnifiedDataService, we mock BackendService calls.
-
-      // This test will assume we *can* mock the static BackendService.getUserCollection call
-      // or that UnifiedDataService is refactored to take an instance of BackendService.
-      // For now, this test will likely not work as expected without such capabilities.
-
-      // Let's write it as if UDS used an injected/mockable BackendService for collection calls.
-      // And that UDS uses its own isAuthenticated check before calling.
-      when(mockFirebaseService.isAuthenticated).thenReturn(true); // Let's say UDS initialize uses this for a branch
-      // And that UDS calls an instance method on a (hypothetical) injected BackendService
-      // For the actual code: unifiedDataService.initialize() calls static BackendService.getUserCollection()
-      // This means the mockBackendService.getUserCollection() setup here won't be hit by the actual code.
-
-      // This test is more illustrative of intent due to static calls in UDS.
-      // If UDS were refactored to use an injected BackendService instance for crystal ops:
-      // unifiedDataService = UnifiedDataService(..., backendService: mockBackendService);
-      // when(mockBackendService.getUserCollection()).thenAnswer((_) async => crystals);
-      // await unifiedDataService.initialize();
-      // expect(unifiedDataService.crystalCollection, crystals);
-      // verify(mockBackendService.getUserCollection()).called(1);
-      expect(true, isTrue); // Placeholder
+      expect(unifiedDataService.crystalCollection, crystals);
+      verify(mockBackendService.getUserCollection(userId: "user123")).called(1);
     });
   });
 
   group('Crystal CRUD Operations', () {
-    // Assume user is authenticated for these tests (e.g., BackendService.isAuthenticated = true)
-    // This requires a mechanism to set this static property for tests.
-    // If UDS uses its own `isAuthenticated` getter that relies on _firebaseService:
     setUp(() {
-        when(mockFirebaseService.isAuthenticated).thenReturn(true);
-        // And assume BackendService.currentUserId can be mocked/set if UDS uses it for addCrystal user_id
-        // BackendService.setCurrentUserIdForTesting("test_user_id");
+        // Ensure authenticated state for CRUD tests
+        when(mockBackendService.isAuthenticated).thenReturn(true);
+        when(mockBackendService.currentUserId).thenReturn("user123_crud");
+        // Reset collection for each test in this group to avoid interference
+        unifiedDataService.crystalCollection.clear();
     });
 
     test('addCrystal calls BackendService.saveCrystal and updates collection', () async {
       final newCrystal = sampleCrystalData("newId", "Novaculite");
-      final crystalToSave = UnifiedCrystalData.fromJson(jsonDecode(jsonEncode(newCrystal.toJson()))); // Deep copy for safety
-      // Modify crystalToSave if UDS sets user_id or addedToCollection
-      // (as per UDS.addCrystal logic)
-       if (crystalToSave.userIntegration == null) {
-        crystalToSave.userIntegration = UserIntegration(userId: BackendService.currentUserId, addedToCollection: DateTime.now().toIso8601String(), intentionSettings: [], userExperiences: []);
-      } else {
-        crystalToSave.userIntegration = crystalToSave.userIntegration!.copyWith(
-            userId: crystalToSave.userIntegration!.userId ?? BackendService.currentUserId,
-            addedToCollection: crystalToSave.userIntegration!.addedToCollection ?? DateTime.now().toIso8601String()
-        );
-      }
+      // The UserIntegration part will be enriched by UnifiedDataService.addCrystal
+      final expectedCrystalToSave = newCrystal.copyWith(
+        userIntegration: UserIntegration(
+            userId: "user123_crud",
+            addedToCollection: anyNamed('addedToCollection'), // cannot easily predict this in expect
+            intentionSettings: [], userExperiences: []
+        )
+      );
+      final savedCrystalFromBackend = newCrystal.copyWith( // Simulate backend returning the saved obj
+         userIntegration: UserIntegration(userId: "user123_crud", addedToCollection: DateTime.now().toIso8601String(), intentionSettings: [], userExperiences: [])
+      );
 
 
-      when(mockBackendService.saveCrystal(any)) // if UDS uses an instance of BackendService
-          .thenAnswer((invocation) async => invocation.positionalArguments.first as UnifiedCrystalData);
+      when(mockBackendService.saveCrystal(any)).thenAnswer((_) async => savedCrystalFromBackend);
 
-      // This test assumes UnifiedDataService is refactored to use an injected BackendService instance.
-      // Or that static BackendService.saveCrystal can be effectively mocked.
-      // unifiedDataService.setBackendServiceForTesting(mockBackendService); // Hypothetical setter
+      await unifiedDataService.addCrystal(newCrystal);
 
-      // await unifiedDataService.addCrystal(newCrystal);
-      // expect(unifiedDataService.crystalCollection, contains(newCrystal));
-      // verify(mockBackendService.saveCrystal(any)).called(1); // Check if called with a version of newCrystal
+      expect(unifiedDataService.crystalCollection, contains(savedCrystalFromBackend));
+
+      final captured = verify(mockBackendService.saveCrystal(captureAny)).captured;
+      final UnifiedCrystalData capturedCrystal = captured.first;
+      expect(capturedCrystal.crystalCore.id, "newId");
+      expect(capturedCrystal.userIntegration?.userId, "user123_crud");
+      expect(capturedCrystal.userIntegration?.addedToCollection, isNotNull);
+
       // verify(mockFirebaseService.trackUserActivity(any, any)).called(1); // If still used
-      // expect(listenerCalled, isTrue); // If testing notifyListeners
-      expect(true, isTrue); // Placeholder
     });
 
     test('updateCrystal calls BackendService.updateCrystal and updates item in collection', () async {
       final initialCrystal = sampleCrystalData("id1", "OldName");
-      unifiedDataService.crystalCollection.add(initialCrystal); // Setup initial state
+      unifiedDataService.crystalCollection.add(initialCrystal);
 
-      final updatedCrystalData = sampleCrystalData("id1", "NewName");
+      final updatedCrystalDataFromUI = sampleCrystalData("id1", "NewName");
+       // Simulate what UDS's updateCrystal does if it enriches user_id
+      final expectedCrystalToUpdate = updatedCrystalDataFromUI.copyWith(
+        userIntegration: (updatedCrystalDataFromUI.userIntegration ?? UserIntegration(intentionSettings: [], userExperiences: []))
+                            .copyWith(userId: "user123_crud")
+      );
 
-      when(mockBackendService.updateCrystal(any))
-          .thenAnswer((inv) async => inv.positionalArguments.first as UnifiedCrystalData);
 
-      // As above, assumes UDS uses injectable/mockable BackendService instance
-      // await unifiedDataService.updateCrystal(updatedCrystalData);
-      // expect(unifiedDataService.crystalCollection.first.crystalCore.identification.stoneType, "NewName");
-      // verify(mockBackendService.updateCrystal(updatedCrystalData)).called(1);
-      expect(true, isTrue); // Placeholder
+      when(mockBackendService.updateCrystal(any)).thenAnswer((_) async => expectedCrystalToUpdate);
+
+      await unifiedDataService.updateCrystal(updatedCrystalDataFromUI);
+
+      expect(unifiedDataService.crystalCollection.first.crystalCore.identification.stoneType, "NewName");
+      verify(mockBackendService.updateCrystal(argThat(predicate<UnifiedCrystalData>((c) => c.crystalCore.id == "id1" && c.userIntegration?.userId == "user123_crud")))).called(1);
     });
 
     test('removeCrystal calls BackendService.deleteCrystal and removes item from collection', () async {
@@ -189,25 +156,35 @@ void main() {
       final crystalToRemove = sampleCrystalData(crystalId, "Removite");
       unifiedDataService.crystalCollection.add(crystalToRemove);
 
-      when(mockBackendService.deleteCrystal(crystalId)).thenAnswer((_) async => {}); // Returns Future<void>
+      when(mockBackendService.deleteCrystal(crystalId)).thenAnswer((_) async => {});
 
-      // await unifiedDataService.removeCrystal(crystalId);
-      // expect(unifiedDataService.crystalCollection, isEmpty);
-      // verify(mockBackendService.deleteCrystal(crystalId)).called(1);
-      expect(true, isTrue); // Placeholder
+      await unifiedDataService.removeCrystal(crystalId);
+
+      expect(unifiedDataService.crystalCollection, isEmpty);
+      verify(mockBackendService.deleteCrystal(crystalId)).called(1);
     });
   });
 
   group('_updateSpiritualContext', () {
-    test('correctly maps UnifiedCrystalData to spiritual context', () async {
-      final profile = UserProfile(id: 'user1', name: 'Test User', email: 'test@example.com');
+    test('correctly maps UnifiedCrystalData to spiritual context', () {
+      // Mock UserProfile
+      final mockUserProfile = MockUserProfile();
+      when(mockUserProfile.name).thenReturn('Test User');
+      when(mockUserProfile.birthChart).thenReturn(null); // Or MockBirthChart
+      when(mockUserProfile.subscriptionTier).thenReturn(SubscriptionTier.free);
+      when(mockUserProfile.spiritualPreferences).thenReturn({});
+
+      unifiedDataService.userProfile = mockUserProfile; // Manually set profile for test
+
+
       final crystal1 = sampleCrystalData("id1", "ContextCrystal1");
-      crystal1.userIntegration = UserIntegration(addedToCollection: "2023-01-01T00:00:00Z", intentionSettings: ["peace"]);
+      // Use copyWith on UserIntegration if it's immutable and you have such an extension or method
+      crystal1.userIntegration = UserIntegration(userId:"user1", addedToCollection: "2023-01-01T00:00:00Z", intentionSettings: ["peace"], userExperiences: []);
 
       final crystal2 = sampleCrystalData("id2", "ContextCrystal2");
-      crystal2.userIntegration = UserIntegration(addedToCollection: "2023-02-01T00:00:00Z", intentionSettings: ["clarity", "focus"]);
+      crystal2.userIntegration = UserIntegration(userId:"user1", addedToCollection: "2023-02-01T00:00:00Z", intentionSettings: ["clarity", "focus"], userExperiences: []);
 
-      unifiedDataService.userProfile = profile; // Manually set profile for test
+      // unifiedDataService.userProfile = profile; // Manually set profile for test
       unifiedDataService.crystalCollection.addAll([crystal1, crystal2]);
 
       unifiedDataService.updateSpiritualContextInternal(); // Call internal method directly for isolated test

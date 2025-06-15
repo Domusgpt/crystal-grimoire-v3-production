@@ -257,6 +257,24 @@ class UserIntegration {
       'intention_settings': intentionSettings,
     };
   }
+
+  UserIntegration copyWith({
+    String? userId,
+    String? addedToCollection,
+    int? personalRating,
+    String? usageFrequency,
+    List<String>? userExperiences,
+    List<String>? intentionSettings,
+  }) {
+    return UserIntegration(
+      userId: userId ?? this.userId,
+      addedToCollection: addedToCollection ?? this.addedToCollection,
+      personalRating: personalRating ?? this.personalRating,
+      usageFrequency: usageFrequency ?? this.usageFrequency,
+      userExperiences: userExperiences ?? this.userExperiences,
+      intentionSettings: intentionSettings ?? this.intentionSettings,
+    );
+  }
 }
 
 // Corresponds to Pydantic model: AutomaticEnrichment
@@ -335,5 +353,17 @@ class UnifiedCrystalData {
       map['automatic_enrichment'] = automaticEnrichment!.toJson();
     }
     return map;
+  }
+
+  UnifiedCrystalData copyWith({
+    CrystalCore? crystalCore,
+    UserIntegration? userIntegration,
+    AutomaticEnrichment? automaticEnrichment,
+  }) {
+    return UnifiedCrystalData(
+      crystalCore: crystalCore ?? this.crystalCore,
+      userIntegration: userIntegration ?? this.userIntegration,
+      automaticEnrichment: automaticEnrichment ?? this.automaticEnrichment,
+    );
   }
 }

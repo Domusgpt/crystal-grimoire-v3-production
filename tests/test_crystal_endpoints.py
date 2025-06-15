@@ -63,6 +63,64 @@ def test_create_crystal_invalid_input_missing_core(test_client: TestClient):
     response = test_client.post("/api/crystals", json=invalid_data)
     assert response.status_code == 422 # FastAPI Unprocessable Entity
 
+def test_create_crystal_firestore_permission_denied(test_client: TestClient, mock_firestore_client, mocker):
+    # Import specific exceptions here or at top of file
+    # For this example, assuming they can be imported or are base Exception types for mocking.
+    # from google.cloud import exceptions as google_exceptions # Ideal
+    # For now, just use a generic Exception or mock the specific string if that's checked.
+    # We need to ensure these modules are available in the test environment or use generic ones.
+    # Let's assume we can mock the specific exception type if available.
+    # If not, we'd mock with a generic Exception and check the FastAPI response code.
+
+    # If google.cloud.exceptions cannot be imported in this environment,
+    # we might need to mock a more generic exception and ensure the endpoint
+    # still returns a 500-level error.
+    # For robust testing, the actual exception types should be used.
+    try:
+        from google.cloud import exceptions as google_exceptions
+        PermissionDeniedException = google_exceptions.PermissionDenied
+    except ImportError:
+        # Fallback if google.cloud.exceptions is not available in test env
+        # This means we can't test for specific exception handling as accurately
+        class PermissionDeniedException(Exception):
+            def __init__(self, message):
+                super().__init__(message)
+
+    crystal_id = str(uuid.uuid4())
+    sample_data = create_sample_crystal_data(crystal_id)
+
+    mock_doc_ref = mock_firestore_client.collection("crystals").document(crystal_id)
+    mock_doc_ref.set.side_effect = PermissionDeniedException("Mocked Firestore permission denied")
+
+    response = test_client.post("/api/crystals", json=sample_data)
+
+    assert response.status_code == 500 # Expecting a generic internal server error
+    # Or, if the backend maps this to a specific HTTP error (e.g., 403), test for that.
+    # For now, assuming it becomes a 500 due to an unhandled specific DB exception.
+    assert "permission denied" in response.json()["detail"].lower()
+
+
+def test_create_crystal_firestore_deadline_exceeded(test_client: TestClient, mock_firestore_client, mocker):
+    try:
+        from google.api_core import exceptions as api_core_exceptions
+        DeadlineExceededException = api_core_exceptions.DeadlineExceeded
+    except ImportError:
+        class DeadlineExceededException(Exception): # TimeoutError is also a good generic substitute
+            def __init__(self, message):
+                super().__init__(message)
+
+    crystal_id = str(uuid.uuid4())
+    sample_data = create_sample_crystal_data(crystal_id)
+
+    mock_doc_ref = mock_firestore_client.collection("crystals").document(crystal_id)
+    mock_doc_ref.set.side_effect = DeadlineExceededException("Mocked Firestore deadline exceeded")
+
+    response = test_client.post("/api/crystals", json=sample_data)
+
+    assert response.status_code == 500
+    assert "deadline exceeded" in response.json()["detail"].lower()
+
+
 # --- Test Read Crystal ---
 def test_read_crystal_success(test_client: TestClient, mock_firestore_client):
     crystal_id = str(uuid.uuid4())
