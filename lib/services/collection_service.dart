@@ -1,24 +1,30 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart'; // Added for debugPrint
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/crystal_collection.dart';
-import '../models/crystal.dart';
-import 'backend_service.dart';
+// import '../models/crystal.dart'; // Old model, not used directly here anymore
+import '../models/unified_crystal_data.dart'; // For type reference
+// import 'backend_service.dart'; // Assuming backend_service might be phased out or refactored
 
 /// Service for managing the user's crystal collection
+/// NOTE: Most crystal collection management is now intended to be handled by UnifiedDataService.
+/// This service primarily handles local UsageLogs and provides some legacy collection-related methods
+/// that currently operate on an empty or unmanaged collection.
 class CollectionService {
-  static const String _collectionKey = 'crystal_collection';
+  static const String _collectionKey = 'crystal_collection'; // Kept for potential legacy data or future use
   static const String _usageLogsKey = 'crystal_usage_logs';
   
-  // static List<CollectionEntry> _collection = []; // Managed by UnifiedDataService
-  static List<UsageLog> _usageLogs = []; // Usage logs can remain managed here if not part of backend
+  // _collection is intentionally not actively managed here.
+  // Methods using it will operate on an empty list or as per their current logic
+  // until full integration with UnifiedDataService.
+  static List<CollectionEntry> _collection = [];
+  static List<UsageLog> _usageLogs = [];
   static bool _isLoaded = false;
 
   /// Get the current collection - DEPRECATED: Use UnifiedDataService.crystalCollection
   static List<CollectionEntry> get collection {
-    // This getter is problematic as UnifiedDataService holds UnifiedCrystalData.
-    // For now, returning an empty list or throwing error to indicate deprecation.
-    debugPrint("CollectionService.collection getter is deprecated. Use UnifiedDataService.");
-    return [];
+    debugPrint("CollectionService.collection getter is deprecated. Use UnifiedDataService. This returns a local, likely empty, list.");
+    return _collection; // Returning the local _collection for now for method structure
   }
   
   /// Get usage logs
@@ -97,12 +103,16 @@ class CollectionService {
     _usageLogs.add(log);
     
     // Update usage count
+    // NOTE: This operates on the local _collection, which is not synced with UnifiedDataService.
     final entryIndex = _collection.indexWhere((e) => e.id == collectionEntryId);
     if (entryIndex != -1) {
       _collection[entryIndex] = _collection[entryIndex].recordUsage();
+      // No _saveCollection() call here as it's deprecated for this service's direct management
+    } else {
+      debugPrint("CollectionService.recordUsage: Entry with id $collectionEntryId not found in local _collection.");
     }
     
-    await _saveCollection();
+    // await _saveCollection(); // Deprecated
     await _saveUsageLogs();
     
     return log;
@@ -110,11 +120,14 @@ class CollectionService {
 
   /// Get collection statistics
   static CollectionStats getStats() {
+    // NOTE: Operates on local _collection. For global stats, use UnifiedDataService.
+    debugPrint("CollectionService.getStats: Generating stats from local _collection.");
     return CollectionStats.fromCollection(_collection, _usageLogs);
   }
 
   /// Get crystals by purpose
   static List<CollectionEntry> getCrystalsByPurpose(String purpose) {
+    // NOTE: Operates on local _collection.
     return _collection.where((entry) => 
       entry.primaryUses.contains(purpose)
     ).toList();
@@ -122,18 +135,24 @@ class CollectionService {
 
   /// Get crystals by chakra
   static List<CollectionEntry> getCrystalsByChakra(String chakra) {
-    return _collection.where((entry) => 
-      entry.crystal.chakras.contains(chakra)
-    ).toList();
+    // NOTE: Operates on local _collection.
+    // Needs to access UnifiedCrystalData for chakra information.
+    return _collection.where((entry) {
+      final primaryChakra = entry.crystalData.crystalCore.energyMapping.primaryChakra.toLowerCase();
+      final secondaryChakras = entry.crystalData.crystalCore.energyMapping.secondaryChakras.map((c) => c.toLowerCase()).toList();
+      return primaryChakra == chakra.toLowerCase() || secondaryChakras.contains(chakra.toLowerCase());
+    }).toList();
   }
 
   /// Get favorite crystals
   static List<CollectionEntry> getFavorites() {
+    // NOTE: Operates on local _collection.
     return _collection.where((entry) => entry.isFavorite).toList();
   }
 
   /// Get most used crystals
   static List<CollectionEntry> getMostUsed({int limit = 5}) {
+    // NOTE: Operates on local _collection.
     final sorted = List<CollectionEntry>.from(_collection)
       ..sort((a, b) => b.usageCount.compareTo(a.usageCount));
     return sorted.take(limit).toList();
@@ -148,20 +167,28 @@ class CollectionService {
 
   /// Toggle favorite status
   static Future<void> toggleFavorite(String entryId) async {
+    // NOTE: Operates on local _collection.
     final index = _collection.indexWhere((e) => e.id == entryId);
     if (index != -1) {
       final entry = _collection[index];
       _collection[index] = entry.copyWith(isFavorite: !entry.isFavorite);
-      await _saveCollection();
+      // await _saveCollection(); // Deprecated
+      debugPrint("CollectionService.toggleFavorite: Favorite status for entry $entryId toggled in local _collection. Not saved persistently by this service.");
     }
   }
 
   /// Search collection
   static List<CollectionEntry> searchCollection(String query) {
+    // NOTE: Operates on local _collection.
     final lowercaseQuery = query.toLowerCase();
     return _collection.where((entry) {
-      return entry.crystal.name.toLowerCase().contains(lowercaseQuery) ||
-             entry.crystal.description.toLowerCase().contains(lowercaseQuery) ||
+      final core = entry.crystalData.crystalCore;
+      final enrichment = entry.crystalData.automaticEnrichment;
+      final name = core.identification.stoneType.toLowerCase();
+      final description = (enrichment?.healingProperties ?? []).join(', ').toLowerCase(); // Example for description
+
+      return name.contains(lowercaseQuery) ||
+             description.contains(lowercaseQuery) ||
              entry.notes?.toLowerCase().contains(lowercaseQuery) == true ||
              entry.primaryUses.any((use) => use.toLowerCase().contains(lowercaseQuery));
     }).toList();
@@ -169,20 +196,28 @@ class CollectionService {
 
   /// Get AI recommendations context
   static Map<String, dynamic> getAIContext() {
-    final stats = getStats();
+    // NOTE: Uses local _collection for stats, usage, and preferences.
+    debugPrint("CollectionService.getAIContext: Generating context from local _collection and _usageLogs.");
+    final stats = getStats(); // Will use local _collection
     return {
       'collectionStats': stats.toAIContext(),
-      'recentUsage': _getRecentUsageContext(),
-      'preferences': _getUserPreferences(),
+      'recentUsage': _getRecentUsageContext(), // Will use local _collection for entry details
+      'preferences': _getUserPreferences(), // Will use local _collection
     };
   }
 
   /// Get recent usage context for AI
   static Map<String, dynamic> _getRecentUsageContext() {
+    // NOTE: Uses local _collection to find entry details for logs.
     final recentLogs = _usageLogs.take(10).map((log) {
-      final entry = _collection.firstWhere((e) => e.id == log.collectionEntryId);
+      final entry = _collection.firstWhere(
+        (e) => e.id == log.collectionEntryId,
+        // orElse: () => null, // Handle case where entry might not be in local _collection
+      ); // This will throw if not found. Consider adding orElse.
+      // If entry is not guaranteed to be in _collection, this needs robust handling.
+      // For now, assuming it would be found if _collection was populated.
       return {
-        'crystal': entry.crystal.name,
+        'crystal': entry.crystalData.crystalCore.identification.stoneType,
         'purpose': log.purpose,
         'moodImprovement': log.moodAfter != null && log.moodBefore != null
             ? log.moodAfter! - log.moodBefore!

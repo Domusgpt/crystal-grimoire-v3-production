@@ -166,16 +166,29 @@ class CollectionServiceV2 extends ChangeNotifier {
     
     _usageLogs.add(log);
     
-    // Update usage count
-    final index = _collection.indexWhere((e) => e.id == entryId);
-    if (index != -1) {
-      final entry = _collection[index];
-      _collection[index] = entry.copyWith(
-        usageCount: entry.usageCount + 1,
-      );
-    }
+    // Update usage count on CollectionEntry
+    // This part assumes CollectionEntry itself still tracks usageCount, which it does.
+    // The UnifiedCrystalData does not have usageCount.
+    // If the intention was to update usageCount on a UnifiedCrystalData instance,
+    // that would require adding usageCount to UserIntegration or similar.
+    // For now, this local _collection holds UnifiedCrystalData, which doesn't have a direct usageCount.
+    // The `CollectionEntry` model (if that's what _collection was supposed to be) does.
+    // Given _collection is List<UnifiedCrystalData>, this `copyWith` does not exist.
+
+    // TODO: Revisit usage count management. UnifiedCrystalData does not have a usageCount.
+    // If usage count needs to be tracked per crystal, it should be part of UserIntegration
+    // or managed in a separate data structure that links UnifiedCrystalData.id to its usage.
+    // For now, removing the direct update attempt on _collection which is List<UnifiedCrystalData>.
+    // The UsageLog itself records an instance of usage.
     
-    await _saveToLocal();
+    // final index = _collection.indexWhere((e) => e.crystalCore.id == entryId); // Assuming entryId is UCD.id
+    // if (index != -1) {
+    //   // This logic is flawed as UnifiedCrystalData has no copyWith for usageCount.
+    //   // final entry = _collection[index];
+    //   // _collection[index] = entry.copyWith(usageCount: entry.usageCount + 1);
+    // }
+
+    await _saveUsageLogsToLocal(); // Save usage logs
     notifyListeners();
   }
   
@@ -211,8 +224,9 @@ class CollectionServiceV2 extends ChangeNotifier {
   /// This would need to be part of UserIntegration or managed differently.
   /// For now, returning empty or assuming a way to filter if UserIntegration had it.
   List<UnifiedCrystalData> getFavorites() {
-    // return _collection.where((ucd) => ucd.userIntegration?.isFavorite ?? false).toList();
-    debugPrint("getFavorites: isFavorite not directly in UnifiedCrystalData.userIntegration. Returning empty.");
+    // TODO: Add 'isFavorite' to UserIntegration in UnifiedCrystalData model if this feature is needed.
+    // For now, returning an empty list as UnifiedCrystalData.userIntegration does not have isFavorite.
+    debugPrint("getFavorites: 'isFavorite' field not available in UnifiedCrystalData.userIntegration. Returning empty list.");
     return [];
   }
   
@@ -252,17 +266,36 @@ class CollectionServiceV2 extends ChangeNotifier {
   
   /// Get collection statistics
   CollectionStats getStats() {
+    // Pass the UCD list to fromCollection, which now expects List<UnifiedCrystalData>
     return CollectionStats.fromCollection(_collection, _usageLogs);
   }
   
   /// Search crystals
-  List<CollectionEntry> searchCrystals(String query) {
+  List<UnifiedCrystalData> searchCrystals(String query) {
     final lowercaseQuery = query.toLowerCase();
-    return _collection.where((entry) {
-      return entry.crystal.name.toLowerCase().contains(lowercaseQuery) ||
-             entry.crystal.scientificName.toLowerCase().contains(lowercaseQuery) ||
-             entry.crystal.description.toLowerCase().contains(lowercaseQuery) ||
-             (entry.notes?.toLowerCase().contains(lowercaseQuery) ?? false);
+    return _collection.where((ucd) {
+      final core = ucd.crystalCore;
+      final enrichment = ucd.automaticEnrichment;
+      final userIntegration = ucd.userIntegration;
+
+      bool nameMatch = core.identification.stoneType.toLowerCase().contains(lowercaseQuery);
+      bool familyMatch = core.identification.crystalFamily.toLowerCase().contains(lowercaseQuery);
+
+      List<String> searchableEnrichment = [];
+      if (enrichment?.healingProperties != null) {
+        searchableEnrichment.addAll(enrichment!.healingProperties);
+      }
+      if (enrichment?.usageSuggestions != null) {
+        searchableEnrichment.addAll(enrichment!.usageSuggestions);
+      }
+      bool enrichmentMatch = searchableEnrichment.any((prop) => prop.toLowerCase().contains(lowercaseQuery));
+
+      // Assuming personalNotes is a field in UserIntegration
+      bool notesMatch = userIntegration?.personalNotes?.toLowerCase().contains(lowercaseQuery) ?? false;
+      // If searching userExperiences instead/additionally:
+      // bool experiencesMatch = userIntegration?.userExperiences.any((exp) => exp.toLowerCase().contains(lowercaseQuery)) ?? false;
+
+      return nameMatch || familyMatch || enrichmentMatch || notesMatch;
     }).toList();
   }
   

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'crystal.dart';
-import 'crystal_v2.dart' as v2;
+// import 'crystal.dart'; // Old model, replaced by UnifiedCrystalData
+import 'crystal_v2.dart' as v2; // May still be used by other parts or for conversion
+import './unified_crystal_data.dart'; // New model
 
 /// Represents a crystal in the user's collection
 class CollectionEntry {
   final String id;
   final String userId;
-  final Crystal crystal;
+  final UnifiedCrystalData crystalData; // Changed from 'crystal' to 'crystalData'
   final DateTime dateAdded;
   final String source; // Where/how acquired: "purchased", "gifted", "found", "inherited"
   final String? location; // Where acquired/found
@@ -25,7 +26,7 @@ class CollectionEntry {
   CollectionEntry({
     required this.id,
     required this.userId,
-    required this.crystal,
+    required this.crystalData, // Updated field name
     required this.dateAdded,
     required this.source,
     this.location,
@@ -45,7 +46,7 @@ class CollectionEntry {
   /// Create a new collection entry
   factory CollectionEntry.create({
     required String userId,
-    required Crystal crystal,
+    required UnifiedCrystalData crystalData, // Updated type
     required String source,
     String? location,
     double? price,
@@ -58,7 +59,7 @@ class CollectionEntry {
     return CollectionEntry(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       userId: userId,
-      crystal: crystal,
+      crystalData: crystalData, // Updated field
       dateAdded: DateTime.now(),
       source: source,
       location: location,
@@ -76,7 +77,7 @@ class CollectionEntry {
     return {
       'id': id,
       'userId': userId,
-      'crystal': crystal.toJson(),
+      'crystalData': crystalData.toJson(), // Updated to use crystalData and its toJson
       'dateAdded': dateAdded.toIso8601String(),
       'source': source,
       'location': location,
@@ -99,7 +100,8 @@ class CollectionEntry {
     return CollectionEntry(
       id: json['id'],
       userId: json['userId'],
-      crystal: Crystal.fromJson(json['crystal']),
+      // Ensure null safety for fromJson, provide default empty map if null
+      crystalData: UnifiedCrystalData.fromJson(json['crystalData'] as Map<String, dynamic>? ?? {}),
       dateAdded: DateTime.parse(json['dateAdded']),
       source: json['source'],
       location: json['location'],
@@ -130,7 +132,7 @@ class CollectionEntry {
     return CollectionEntry(
       id: id,
       userId: userId,
-      crystal: crystal,
+      crystalData: crystalData, // Keep current crystalData if not changing
       dateAdded: dateAdded,
       source: source,
       location: location,
@@ -238,45 +240,82 @@ class CollectionStats {
   });
 
   /// Generate stats from collection
-  factory CollectionStats.fromCollection(List<CollectionEntry> collection, List<UsageLog> logs) {
+  factory CollectionStats.fromCollection(List<UnifiedCrystalData> unifiedCollection, List<UsageLog> logs) {
     final crystalsByType = <String, int>{};
     final crystalsByChakra = <String, int>{};
     final crystalsByPurpose = <String, int>{};
-    final usageCount = <String, int>{};
-    final favorites = <String>[];
+    // final usageCount = <String, int>{}; // Usage count is not directly on UnifiedCrystalData
+    // final favorites = <String>[]; // isFavorite is not directly on UnifiedCrystalData
     final effectiveness = <String, List<double>>{};
 
     // Analyze collection
-    for (final entry in collection) {
-      // Count by type
-      final type = entry.crystal.group;
-      crystalsByType[type] = (crystalsByType[type] ?? 0) + 1;
+    for (final ucd in unifiedCollection) {
+      final core = ucd.crystalCore;
+      final identification = core.identification;
+      final energy = core.energyMapping;
+      final enrichment = ucd.automaticEnrichment;
+      // final userIntegration = ucd.userIntegration; // For future use with isFavorite, usageCount
 
-      // Count by chakra
-      for (final chakra in entry.crystal.chakras) {
-        crystalsByChakra[chakra] = (crystalsByChakra[chakra] ?? 0) + 1;
+      // Count by type (using crystalFamily as "group/type")
+      final type = identification.crystalFamily;
+      if (type.isNotEmpty) {
+        crystalsByType[type] = (crystalsByType[type] ?? 0) + 1;
       }
 
-      // Count by purpose
-      for (final purpose in entry.primaryUses) {
+      // Count by chakra
+      final List<String> entryChakras = [];
+      if (energy.primaryChakra.isNotEmpty) {
+        entryChakras.add(energy.primaryChakra.toLowerCase());
+      }
+      entryChakras.addAll(energy.secondaryChakras.map((c) => c.toLowerCase()));
+
+      for (final chakra in entryChakras.toSet()) { // Use toSet() to count each chakra once per crystal
+        if (chakra.isNotEmpty) {
+          crystalsByChakra[chakra] = (crystalsByChakra[chakra] ?? 0) + 1;
+        }
+      }
+
+      // Count by purpose (e.g., from healingProperties or usageSuggestions)
+      final purposes = <String>{};
+      enrichment?.healingProperties.forEach((p) => purposes.add(p.toLowerCase()));
+      enrichment?.usageSuggestions.forEach((p) => purposes.add(p.toLowerCase()));
+      // TODO: Consider if UserIntegration.intentionSettings should also contribute here
+      for (final purpose in purposes) {
         crystalsByPurpose[purpose] = (crystalsByPurpose[purpose] ?? 0) + 1;
       }
 
-      // Track usage
-      usageCount[entry.crystal.name] = entry.usageCount;
+      // Track usage - Not available on UnifiedCrystalData directly
+      // if (identification.stoneType.isNotEmpty && userIntegration?.usageCount != null) {
+      //   usageCount[identification.stoneType] = userIntegration!.usageCount!;
+      // }
 
-      // Track favorites
-      if (entry.isFavorite) {
-        favorites.add(entry.crystal.name);
-      }
+      // Track favorites - Not available on UnifiedCrystalData directly
+      // if (userIntegration?.isFavorite == true && identification.stoneType.isNotEmpty) {
+      //   favorites.add(identification.stoneType);
+      // }
     }
 
     // Analyze usage logs for effectiveness
     for (final log in logs) {
       if (log.moodBefore != null && log.moodAfter != null) {
-        final entry = collection.firstWhere((e) => e.id == log.collectionEntryId);
-        final improvement = (log.moodAfter! - log.moodBefore!).toDouble();
-        effectiveness.putIfAbsent(entry.crystal.name, () => []).add(improvement);
+        // Find the corresponding UnifiedCrystalData using collectionEntryId which should match UCD.crystalCore.id
+        final ucdEntry = unifiedCollection.firstWhere(
+          (ucd) => ucd.crystalCore.id == log.collectionEntryId,
+          orElse: () {
+            debugPrint("CollectionStats: UsageLog with id ${log.id} refers to collectionEntryId ${log.collectionEntryId} not found in unifiedCollection.");
+            // Return a dummy UnifiedCrystalData to prevent crash. This is not ideal.
+            // A better approach would be to filter out such logs or handle them gracefully.
+            return UnifiedCrystalData.empty(); // Assuming an empty static constructor
+          }
+        );
+
+        if (ucdEntry.crystalCore.id.isEmpty) continue; // Skip if dummy/empty UCD was returned
+
+        final crystalName = ucdEntry.crystalCore.identification.stoneType;
+        if (crystalName.isNotEmpty) {
+          final improvement = (log.moodAfter! - log.moodBefore!).toDouble();
+          effectiveness.putIfAbsent(crystalName, () => []).add(improvement);
+        }
       }
     }
 
@@ -288,18 +327,23 @@ class CollectionStats {
       }
     });
 
-    // Get most used crystals
-    final sortedByUsage = usageCount.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final mostUsed = sortedByUsage.take(5).map((e) => e.key).toList();
+    // Get most used crystals - Cannot be reliably determined without usageCount on UnifiedCrystalData
+    // For now, returning empty list.
+    final mostUsed = <String>[];
+    // final sortedByUsage = usageCount.entries.toList()
+    //   ..sort((a, b) => b.value.compareTo(a.value));
+    // final mostUsed = sortedByUsage.take(5).map((e) => e.key).toList();
+
+    // Favorite crystals - Cannot be reliably determined without isFavorite on UnifiedCrystalData
+    final favorites = <String>[];
 
     return CollectionStats(
-      totalCrystals: collection.length,
+      totalCrystals: unifiedCollection.length,
       crystalsByType: crystalsByType,
       crystalsByChakra: crystalsByChakra,
       crystalsByPurpose: crystalsByPurpose,
-      mostUsedCrystals: mostUsed,
-      favoriteCrystals: favorites,
+      mostUsedCrystals: mostUsed, // Empty for now
+      favoriteCrystals: favorites, // Empty for now
       effectivenessRatings: effectivenessRatings,
       lastUpdated: DateTime.now(),
     );

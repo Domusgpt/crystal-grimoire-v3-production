@@ -6,18 +6,21 @@ import '../widgets/common/mystical_button.dart';
 import '../widgets/common/mystical_card.dart';
 import '../widgets/common/mystical_text_widgets.dart';
 import '../services/collection_service_v2.dart';
-import '../models/crystal_collection.dart';
-import '../models/crystal.dart';
+import '../models/crystal_collection.dart'; // Imports UnifiedCrystalData via CollectionEntry
+import '../models/unified_crystal_data.dart'; // Explicit import for UnifiedCrystalData
+// import '../models/crystal.dart'; // Old model, remove
 
 class CrystalDetailScreen extends StatefulWidget {
-  final CollectionEntry? collectionEntry;
-  final Crystal? crystal;
+  final CollectionEntry? collectionEntry; // Contains UnifiedCrystalData
+  final UnifiedCrystalData? unifiedCrystalData; // For direct passing if not in collection
 
   const CrystalDetailScreen({
     Key? key,
     this.collectionEntry,
-    this.crystal,
-  }) : super(key: key);
+    this.unifiedCrystalData,
+  }) :  assert(collectionEntry != null || unifiedCrystalData != null,
+              'Either collectionEntry or unifiedCrystalData must be provided'),
+        super(key: key);
 
   @override
   State<CrystalDetailScreen> createState() => _CrystalDetailScreenState();
@@ -30,7 +33,14 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
 
-  Crystal? get crystal => widget.collectionEntry?.crystal ?? widget.crystal;
+  // UnifiedCrystalData get crystal => widget.collectionEntry?.crystalData ?? widget.unifiedCrystalData!;
+  // Making it nullable to handle the case where it might still be null if assert fails or logic changes
+  UnifiedCrystalData? get ucd {
+    if (widget.collectionEntry != null) {
+      return widget.collectionEntry!.crystalData;
+    }
+    return widget.unifiedCrystalData;
+  }
   bool get isInCollection => widget.collectionEntry != null;
 
   @override
@@ -78,7 +88,7 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
     try {
       final collectionService = context.read<CollectionServiceV2>();
       await collectionService.logUsage(
-        widget.collectionEntry!.id,
+        widget.collectionEntry!.id, // This ID is CollectionEntry's ID
         purpose: purpose,
         intention: 'Viewed crystal details',
       );
@@ -86,7 +96,7 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
       HapticFeedback.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Usage logged for ${crystal!.name}'),
+          content: Text('Usage logged for ${ucd!.crystalCore.identification.stoneType}'),
           backgroundColor: Theme.of(context).colorScheme.primary,
         ),
       );
@@ -104,16 +114,20 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (crystal == null) {
+    if (ucd == null) { // Check against the new ucd getter
       return Scaffold(
         body: Center(
           child: Text(
-            'Crystal not found',
+            'Crystal data not available.', // Updated message
             style: theme.textTheme.headlineMedium,
           ),
         ),
       );
     }
+
+    final crystalCore = ucd!.crystalCore;
+    final enrichment = ucd!.automaticEnrichment;
+    // final userProps = ucd!.userIntegration; // If needed
 
     return Scaffold(
       backgroundColor: theme.colorScheme.background,
@@ -159,26 +173,36 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                           const SizedBox(width: 16),
                           Expanded(
                             child: ShimmeringText(
-                              text: crystal!.name,
+                              text: crystalCore.identification.stoneType, // Use new path
                               style: theme.textTheme.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           if (isInCollection)
-                            IconButton(
-                              icon: Icon(
-                                widget.collectionEntry!.isFavorite 
-                                    ? Icons.favorite 
-                                    : Icons.favorite_border,
-                                color: widget.collectionEntry!.isFavorite 
-                                    ? Colors.red 
-                                    : null,
-                              ),
-                              onPressed: () {
-                                // TODO: Toggle favorite status
-                                HapticFeedback.lightImpact();
-                              },
+                            Consumer<CollectionServiceV2>( // Example for toggling favorite
+                              builder: (context, service, child) {
+                                return IconButton(
+                                  icon: Icon(
+                                    widget.collectionEntry!.isFavorite
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: widget.collectionEntry!.isFavorite
+                                        ? Colors.red
+                                        : null,
+                                  ),
+                                  onPressed: () {
+                                    // TODO: This favorite is on CollectionEntry, not UnifiedCrystalData.
+                                    // If favorite needs to be on UCD, it must be added to UserIntegration.
+                                    // For now, assuming CollectionEntry.isFavorite is the source of truth.
+                                    // service.toggleFavorite(widget.collectionEntry!.id); // This method was in old service
+                                    debugPrint("Toggle favorite for CollectionEntry ID: ${widget.collectionEntry!.id}");
+                                    HapticFeedback.lightImpact();
+                                    // This would require a method in CollectionServiceV2 to update CollectionEntry's fav status
+                                    // and then persist it via UnifiedDataService potentially if that part of CE is synced.
+                                  },
+                                );
+                              }
                             ),
                         ],
                       ),
@@ -203,14 +227,17 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                           crossAxisAlignment: CrossAxisAlignment.start,
                                           children: [
                                             ShimmeringText(
-                                              text: crystal!.name,
+                                              text: crystalCore.identification.stoneType, // Use new path
                                               style: theme.textTheme.headlineSmall?.copyWith(
                                                 fontWeight: FontWeight.bold,
                                               ),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
-                                              crystal!.scientificName,
+                                              // Use crystalFamily or variety as scientific/subtitle
+                                              crystalCore.identification.crystalFamily.isNotEmpty
+                                                  ? crystalCore.identification.crystalFamily
+                                                  : (crystalCore.identification.variety ?? 'N/A'),
                                               style: theme.textTheme.bodyMedium?.copyWith(
                                                 fontStyle: FontStyle.italic,
                                                 color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -230,6 +257,7 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                             borderRadius: BorderRadius.circular(20),
                                           ),
                                           child: Text(
+                                            // Usage count is on CollectionEntry, not UCD
                                             '${widget.collectionEntry!.usageCount} uses',
                                             style: theme.textTheme.bodySmall?.copyWith(
                                               color: theme.colorScheme.primary,
@@ -240,8 +268,10 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                     ],
                                   ),
                                   const SizedBox(height: 16),
+                                  // Use a combination of properties for description
                                   Text(
-                                    crystal!.description,
+                                    enrichment?.healingProperties.join('. ') ??
+                                    'This crystal holds many secrets yet to be unveiled.', // Fallback
                                     style: theme.textTheme.bodyMedium,
                                   ),
                                 ],
@@ -250,7 +280,8 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
 
                             const SizedBox(height: 16),
 
-                            // Collection details (if in collection)
+                            // Collection details (if in collection) - This part remains largely the same
+                            // as it uses widget.collectionEntry properties directly.
                             if (isInCollection)
                               MysticalCard(
                                 child: Column(
@@ -294,6 +325,10 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                         widget.collectionEntry!.source,
                                         theme,
                                       ),
+                                    // If personal notes are on UserIntegration:
+                                    // if (ucd?.userIntegration?.personalNotes?.isNotEmpty == true)
+                                    //   _buildDetailItem('Personal Notes', ucd!.userIntegration!.personalNotes!, theme),
+                                    // For now, using CollectionEntry notes:
                                     if (widget.collectionEntry!.notes?.isNotEmpty == true)
                                       _buildDetailItem(
                                         'Notes',
@@ -306,20 +341,20 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
 
                             const SizedBox(height: 16),
 
-                            // Metaphysical properties
-                            if (crystal!.metaphysicalProperties.isNotEmpty)
+                            // Metaphysical properties from AutomaticEnrichment
+                            if (enrichment?.healingProperties.isNotEmpty ?? false)
                               MysticalCard(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'Metaphysical Properties',
+                                      'Healing Properties', // Changed title
                                       style: theme.textTheme.titleMedium?.copyWith(
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                     const SizedBox(height: 12),
-                                    ...crystal!.metaphysicalProperties.map(
+                                    ...(enrichment!.healingProperties).map(
                                       (prop) => Padding(
                                         padding: const EdgeInsets.only(bottom: 8),
                                         child: Row(
@@ -346,9 +381,43 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
 
                             const SizedBox(height: 16),
 
-                            // Chakras
-                            if (crystal!.chakras.isNotEmpty)
+                            // Care Instructions from AutomaticEnrichment
+                            if (enrichment?.careInstructions.isNotEmpty ?? false)
                               MysticalCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Care Instructions',
+                                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    ...(enrichment!.careInstructions).map((instr) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.eco, size: 16, color: theme.colorScheme.secondary),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: Text(instr, style: theme.textTheme.bodyMedium)),
+                                        ],
+                                      ),
+                                    )),
+                                  ],
+                                ),
+                              ),
+
+                            const SizedBox(height: 16),
+
+                            // Chakras from EnergyMapping
+                            Builder(builder: (context) {
+                              final List<String> allChakras = [];
+                              if (crystalCore.energyMapping.primaryChakra.isNotEmpty) {
+                                allChakras.add(crystalCore.energyMapping.primaryChakra);
+                              }
+                              allChakras.addAll(crystalCore.energyMapping.secondaryChakras);
+                              if (allChakras.isEmpty) return const SizedBox.shrink();
+
+                              return MysticalCard(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -362,7 +431,7 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                     Wrap(
                                       spacing: 8,
                                       runSpacing: 8,
-                                      children: crystal!.chakras.map((chakra) {
+                                      children: allChakras.map((chakra) {
                                         return Container(
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 12,
@@ -376,7 +445,8 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                             ),
                                           ),
                                           child: Text(
-                                            chakra.toString().split('.').last,
+                                            // chakra.toString().split('.').last, // If it was an enum
+                                            chakra, // Assuming it's already a string
                                             style: theme.textTheme.bodySmall?.copyWith(
                                               color: theme.colorScheme.primary,
                                               fontWeight: FontWeight.w600,
@@ -387,7 +457,8 @@ class _CrystalDetailScreenState extends State<CrystalDetailScreen>
                                     ),
                                   ],
                                 ),
-                              ),
+                              );
+                            }),
 
                             const SizedBox(height: 24),
 
