@@ -57,7 +57,9 @@
       ".git",
       "firebase-debug.log",
       "firebase-debug.*.log",
-      "*.local"
+      "*.local",
+      "venv/",
+      "crystal-bible.pdf"
     ]
   },
   "extensions": {
