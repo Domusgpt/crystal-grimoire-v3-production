@@ -10,6 +10,7 @@ import '../models/crystal.dart';
 import '../models/crystal_collection.dart';
 import '../services/collection_service_v2.dart';
 import '../services/app_state.dart';
+import '../utils/model_converter.dart';
 
 class ResultsScreen extends StatefulWidget {
   final Crystal crystal;
@@ -81,7 +82,7 @@ class _ResultsScreenState extends State<ResultsScreen>
     
     // Check if crystal is already in collection
     final isInCollection = collectionService.collection.any(
-      (entry) => entry.crystal.name.toLowerCase() == widget.crystal.name.toLowerCase()
+      (entry) => entry.crystalCore.identification.stoneType.toLowerCase() == widget.crystal.name.toLowerCase()
     );
 
     return Scaffold(
@@ -435,16 +436,9 @@ class _ResultsScreenState extends State<ResultsScreen>
     setState(() => _isAddingToCollection = true);
     
     try {
-      // Add crystal to collection
-      await collectionService.addCrystal(
-        widget.crystal,
-        notes: 'Identified using Crystal Grimoire AI',
-        source: 'Crystal Identification',
-        location: 'Unknown',
-        size: 'medium',
-        quality: 'tumbled',
-        primaryUses: ['meditation', 'healing'],
-      );
+      // Add crystal to collection - convert Crystal to UnifiedCrystalData
+      final unifiedData = ModelConverter.crystalToUnified(widget.crystal);
+      await collectionService.addCrystal(unifiedData);
       
       // Show success message
       if (mounted) {

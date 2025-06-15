@@ -52,9 +52,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _selectedDate = birthChart.birthDate;
             _birthdateController.text = _formatDate(birthChart.birthDate!);
           }
-          if (birthChart.birthTime != null) {
-            _selectedTime = TimeOfDay.fromDateTime(birthChart.birthTime!);
-            _birthtimeController.text = _formatTime(_selectedTime!);
+          if (birthChart.birthTime.isNotEmpty) {
+            final timeParts = birthChart.birthTime.split(':');
+            if (timeParts.length == 2) {
+              _selectedTime = TimeOfDay(
+                hour: int.parse(timeParts[0]),
+                minute: int.parse(timeParts[1]),
+              );
+              _birthtimeController.text = _formatTime(_selectedTime!);
+            }
           }
           _locationController.text = birthChart.birthLocation ?? '';
         } else {
@@ -472,7 +478,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       
       // Create user profile
       final userProfile = UserProfile(
-        uid: currentUser?.uid ?? 'anonymous',
+        id: currentUser?.uid ?? 'anonymous',
         name: _nameController.text,
         email: _emailController.text,
         subscriptionTier: SubscriptionTier.free,

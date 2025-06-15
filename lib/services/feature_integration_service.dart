@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import '../models/crystal.dart';
 import '../models/crystal_collection.dart';
+import '../models/collection_models.dart';
+import '../models/unified_crystal_data.dart';
 import '../models/journal_entry.dart';
 import '../models/user_profile.dart';
 import 'collection_service_v2.dart';
@@ -52,18 +54,21 @@ class FeatureIntegrationService extends ChangeNotifier {
   /// Update crystal recommendations based on user's collection and needs
   void _updateCrystalRecommendations() {
     final collection = _collectionService.collection;
-    final ownedCrystals = collection.map((e) => e.crystal.name.toLowerCase()).toSet();
+    final ownedCrystals = collection.map((e) => e.crystalCore.identification.stoneType.toLowerCase()).toSet();
+    
+    // Convert UnifiedCrystalData to CollectionEntry for analysis methods
+    final collectionEntries = collection.map(_convertToCollectionEntry).toList();
     
     // Analyze chakra gaps
-    final chakraCoverage = _analyzeChakraCoverage(collection);
+    final chakraCoverage = _analyzeChakraCoverage(collectionEntries);
     _crystalRecommendations['chakra_gaps'] = _getChakraGapRecommendations(chakraCoverage, ownedCrystals);
     
     // Analyze healing property gaps
-    final healingCoverage = _analyzeHealingCoverage(collection);
+    final healingCoverage = _analyzeHealingCoverage(collectionEntries);
     _crystalRecommendations['healing_gaps'] = _getHealingGapRecommendations(healingCoverage, ownedCrystals);
     
     // Analyze element balance
-    final elementBalance = _analyzeElementBalance(collection);
+    final elementBalance = _analyzeElementBalance(collectionEntries);
     _crystalRecommendations['element_balance'] = _getElementBalanceRecommendations(elementBalance, ownedCrystals);
   }
   
@@ -73,7 +78,7 @@ class FeatureIntegrationService extends ChangeNotifier {
     if (userProfile?.birthChart == null) return;
     
     final birthChart = userProfile!.birthChart!;
-    final ownedCrystals = _collectionService.collection.map((e) => e.crystal.name.toLowerCase()).toSet();
+    final ownedCrystals = _collectionService.collection.map((e) => e.crystalCore.identification.stoneType.toLowerCase()).toSet();
     
     // Recommendations based on sun sign
     _crystalRecommendations['sun_sign'] = _getSunSignRecommendations(birthChart.sunSign.name, ownedCrystals);
@@ -377,6 +382,25 @@ class FeatureIntegrationService extends ChangeNotifier {
       'mood_trends': _moodTrends,
       'recent_activities': _recentActivities.take(5).toList(),
     };
+  }
+  
+  /// Convert UnifiedCrystalData to CollectionEntry for compatibility with analysis methods
+  CollectionEntry _convertToCollectionEntry(UnifiedCrystalData unifiedData) {
+    return CollectionEntry(
+      id: unifiedData.crystalCore.id,
+      crystalId: unifiedData.crystalCore.id,
+      name: unifiedData.crystalCore.identification.stoneType,
+      addedDate: DateTime.tryParse(unifiedData.crystalCore.timestamp) ?? DateTime.now(),
+      properties: {
+        'chakras': unifiedData.crystalCore.energyMapping.primaryChakras,
+        'elements': unifiedData.crystalCore.astrologicalData.elements,
+        'healing_properties': unifiedData.automaticEnrichment?.healingProperties ?? [],
+        'zodiac_signs': unifiedData.crystalCore.astrologicalData.compatibleSigns,
+      },
+      crystal: unifiedData,
+      notes: unifiedData.userIntegration?.userExperiences.join('; '),
+      usageCount: unifiedData.usageCount,
+    );
   }
   
   /// Dispose and cleanup listeners

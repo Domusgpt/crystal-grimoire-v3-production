@@ -84,17 +84,23 @@ class _MetaphysicalGuidanceScreenState extends State<MetaphysicalGuidanceScreen>
     setState(() {
       _userProfile = {
         'collection_stats': stats.toAIContext(),
-        'favorite_crystals': collection.where((e) => e.isFavorite).map((e) => e.crystal.name).toList(),
+        'favorite_crystals': [], // UnifiedCrystalData doesn't have isFavorite directly
         'recent_crystals': collection.take(5).map((e) => {
-          'name': e.crystal.name,
-          'date_added': e.dateAdded.toIso8601String(),
-          'chakras': e.crystal.chakras,
-          'metaphysical_properties': e.crystal.metaphysicalProperties,
+          'name': e.crystalCore.identification.stoneType,
+          'date_added': e.crystalCore.timestamp,
+          'chakras': e.crystalCore.energyMapping.primaryChakras,
+          'metaphysical_properties': e.crystalCore.dynamicMetaphysicalProperties.healingProperties,
         }).toList(),
         'spiritual_preferences': {
-          'meditation_crystals': collection.where((e) => e.primaryUses.contains('meditation')).length,
-          'healing_crystals': collection.where((e) => e.primaryUses.contains('healing')).length,
-          'protection_crystals': collection.where((e) => e.primaryUses.contains('protection')).length,
+          'meditation_crystals': collection.where((e) => 
+            e.automaticEnrichment?.usageSuggestions.any((use) => use.toLowerCase().contains('meditation')) ?? false
+          ).length,
+          'healing_crystals': collection.where((e) => 
+            e.automaticEnrichment?.healingProperties.isNotEmpty ?? false
+          ).length,
+          'protection_crystals': collection.where((e) => 
+            e.automaticEnrichment?.healingProperties.any((prop) => prop.toLowerCase().contains('protection')) ?? false
+          ).length,
         }
       };
     });
@@ -860,16 +866,17 @@ Provide intuitive insights about their spiritual journey:
         itemCount: collection.length,
         itemBuilder: (context, index) {
           final entry = collection[index];
-          final isSelected = _selectedCrystals.contains(entry.crystal.name);
+          final crystalName = entry.crystalCore.identification.stoneType;
+          final isSelected = _selectedCrystals.contains(crystalName);
           
           return GestureDetector(
             onTap: () {
               setState(() {
                 if (isSelected) {
-                  _selectedCrystals.remove(entry.crystal.name);
+                  _selectedCrystals.remove(crystalName);
                 } else {
                   if (_selectedCrystals.length < 3) {
-                    _selectedCrystals.add(entry.crystal.name);
+                    _selectedCrystals.add(crystalName);
                   } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -906,7 +913,7 @@ Provide intuitive insights about their spiritual journey:
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    entry.crystal.name,
+                    crystalName,
                     style: TextStyle(
                       fontSize: 10,
                       color: isSelected ? Colors.purple : Colors.white.withOpacity(0.7),
