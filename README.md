@@ -256,7 +256,8 @@ git add . && git commit -m "Deploy" && git push
 
 ### Backend (Cloud Run)
 ```bash
-cd backend
+# Ensure you are in the project root directory
+# (where backend_server.py, Dockerfile, etc. are located)
 gcloud run deploy crystal-grimoire-api \
   --source . \
   --region us-central1 \

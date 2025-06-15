@@ -6,8 +6,8 @@ from datetime import datetime
 
 # Sample data for UnifiedCrystalData for testing
 # (Should match the structure defined in backend_server.py Pydantic models)
-def create_sample_crystal_data(crystal_id: str, stone_type: str = "Test Stone"):
-    return {
+def create_sample_crystal_data(crystal_id: str, stone_type: str = "Test Stone", user_id: Optional[str] = "sample_user_123"):
+    data = {
         "crystal_core": {
             "id": crystal_id,
             "timestamp": datetime.utcnow().isoformat(),
@@ -28,20 +28,30 @@ def create_sample_crystal_data(crystal_id: str, stone_type: str = "Test Stone"):
                 "crystal_number": 1, "color_vibration": 1, "chakra_number": 5, "master_number": 7
             }
         },
-        "user_integration": None, # Or provide sample data
         "automatic_enrichment": {
             "mineral_class": "TestClass"
         }
     }
+    if user_id:
+        data["user_integration"] = {
+            "user_id": user_id,
+            "added_to_collection": None,
+            "personal_rating": None,
+            "usage_frequency": None,
+            "user_experiences": [],
+            "intention_settings": []
+        }
+    else:
+        data["user_integration"] = None
+    return data
 
 # --- Test Create Crystal ---
 def test_create_crystal_success(test_client: TestClient, mock_firestore_client):
     crystal_id = str(uuid.uuid4())
-    sample_data = create_sample_crystal_data(crystal_id)
+    user_id_for_crystal = "user_crystal_create_test"
+    sample_data = create_sample_crystal_data(crystal_id, user_id=user_id_for_crystal)
 
-    # Configure mock for firestore document set
     mock_doc_ref = mock_firestore_client.collection("crystals").document(crystal_id)
-    # mock_doc_ref.set = MagicMock() # .set is already a MagicMock from parent
 
     response = test_client.post("/api/crystals", json=sample_data)
 
@@ -49,13 +59,19 @@ def test_create_crystal_success(test_client: TestClient, mock_firestore_client):
     response_data = response.json()
     assert response_data["crystal_core"]["id"] == crystal_id
     assert response_data["crystal_core"]["identification"]["stone_type"] == "Test Stone"
+    assert response_data["user_integration"]["user_id"] == user_id_for_crystal
 
     mock_firestore_client.collection.assert_called_with("crystals")
     mock_firestore_client.collection("crystals").document.assert_called_with(crystal_id)
     mock_doc_ref.set.assert_called_once()
-    # TODO: Add more detailed check for what doc_ref.set was called with if possible:
-    # called_with_data = mock_doc_ref.set.call_args[0][0]
-    # assert called_with_data["crystal_core"]["id"] == crystal_id
+
+    # Check the data passed to set
+    called_with_data = mock_doc_ref.set.call_args[0][0]
+    assert called_with_data["crystal_core"]["id"] == crystal_id
+    assert called_with_data["user_integration"]["user_id"] == user_id_for_crystal
+    # Compare the whole structure, ensuring timestamps might differ but other data is same
+    # For simplicity, just checking a few key fields here. A deep diff helper could be used.
+    assert called_with_data["crystal_core"]["identification"]["stone_type"] == sample_data["crystal_core"]["identification"]["stone_type"]
 
 
 def test_create_crystal_invalid_input_missing_core(test_client: TestClient):
@@ -215,7 +231,12 @@ def test_update_crystal_success(test_client: TestClient, mock_firestore_client):
 
     mock_doc_ref.get.assert_called_once() # Existence check
     mock_doc_ref.set.assert_called_once()
-    # TODO: Check data passed to set: called_with_data = mock_doc_ref.set.call_args[0][0]
+    # Check data passed to set more thoroughly
+    called_with_data = mock_doc_ref.set.call_args[0][0]
+    assert called_with_data["crystal_core"]["identification"]["stone_type"] == updated_data["crystal_core"]["identification"]["stone_type"]
+    assert called_with_data["crystal_core"]["visual_analysis"]["primary_color"] == updated_data["crystal_core"]["visual_analysis"]["primary_color"]
+    assert called_with_data["user_integration"]["user_id"] == updated_data["user_integration"]["user_id"]
+
 
 def test_update_crystal_not_found(test_client: TestClient, mock_firestore_client):
     crystal_id = str(uuid.uuid4())
@@ -266,9 +287,83 @@ def test_delete_crystal_not_found(test_client: TestClient, mock_firestore_client
     response = test_client.delete(f"/api/crystals/{crystal_id}")
     assert response.status_code == 404
 
-# TODO: Test for Firestore unavailable (mock db=None or crystals_collection=None)
-# This requires modifying the fixture or test setup to simulate that condition.
 # For example, a separate fixture that patches backend_server.crystals_collection to None.
+
+# --- Tests for list_crystals with user_id filter ---
+def test_list_crystals_for_user_success(test_client: TestClient, mock_firestore_client):
+    user_id_to_filter = "user_abc_123"
+    crystal_id_1 = str(uuid.uuid4())
+    crystal_id_2 = str(uuid.uuid4())
+
+    # Crystal belonging to the user
+    sample_data_user = create_sample_crystal_data(crystal_id_1, "UserCrystal", user_id=user_id_to_filter)
+    # Crystal belonging to another user (or no user) - should not be returned
+    sample_data_other = create_sample_crystal_data(crystal_id_2, "OtherCrystal", user_id="other_user_789")
+
+    mock_doc_snapshot_user = MagicMock()
+    mock_doc_snapshot_user.exists = True
+    mock_doc_snapshot_user.to_dict.return_value = sample_data_user
+
+    # Simulate Firestore's where().stream()
+    # The mock_collection_ref needs to return a new mock for where()
+    mock_query_ref = MagicMock()
+    mock_query_ref.stream.return_value = [mock_doc_snapshot_user] # Only return the user's crystal
+
+    mock_collection_ref = mock_firestore_client.collection("crystals")
+    mock_collection_ref.where.return_value = mock_query_ref # where() returns a new query object
+
+    response = test_client.get(f"/api/crystals?user_id={user_id_to_filter}")
+    assert response.status_code == 200
+    response_data = response.json()
+
+    assert len(response_data) == 1
+    assert response_data[0]["crystal_core"]["id"] == crystal_id_1
+    assert response_data[0]["user_integration"]["user_id"] == user_id_to_filter
+
+    mock_collection_ref.where.assert_called_once_with("user_integration.user_id", "==", user_id_to_filter)
+    mock_query_ref.stream.assert_called_once()
+
+
+def test_list_crystals_for_user_not_found(test_client: TestClient, mock_firestore_client):
+    user_id_to_filter = "user_def_456"
+
+    mock_query_ref = MagicMock()
+    mock_query_ref.stream.return_value = [] # No crystals for this user
+
+    mock_collection_ref = mock_firestore_client.collection("crystals")
+    mock_collection_ref.where.return_value = mock_query_ref
+
+    response = test_client.get(f"/api/crystals?user_id={user_id_to_filter}")
+    assert response.status_code == 200
+    assert response.json() == []
+    mock_collection_ref.where.assert_called_once_with("user_integration.user_id", "==", user_id_to_filter)
+    mock_query_ref.stream.assert_called_once()
+
+
+def test_list_crystals_no_user_id_returns_all(test_client: TestClient, mock_firestore_client):
+    # This test confirms the behavior when no user_id is provided (should return all)
+    # It's similar to the original test_list_crystals_success
+    crystal_id_1 = str(uuid.uuid4())
+    crystal_id_2 = str(uuid.uuid4())
+    sample_data_1 = create_sample_crystal_data(crystal_id_1, "GlobalCrystal1", user_id="user1")
+    sample_data_2 = create_sample_crystal_data(crystal_id_2, "GlobalCrystal2", user_id="user2")
+
+    mock_doc_snapshot_1 = MagicMock()
+    mock_doc_snapshot_1.to_dict.return_value = sample_data_1
+    mock_doc_snapshot_2 = MagicMock()
+    mock_doc_snapshot_2.to_dict.return_value = sample_data_2
+
+    mock_collection_ref = mock_firestore_client.collection("crystals")
+    mock_collection_ref.stream.return_value = [mock_doc_snapshot_1, mock_doc_snapshot_2]
+
+    response = test_client.get("/api/crystals") # No user_id query parameter
+    assert response.status_code == 200
+    response_data = response.json()
+    assert len(response_data) == 2
+    # Ensure where was NOT called
+    mock_collection_ref.where.assert_not_called()
+    mock_collection_ref.stream.assert_called_once() # stream directly on the collection
+
 
 def test_crud_operations_firestore_unavailable(test_client_firestore_unavailable: TestClient):
     crystal_id = str(uuid.uuid4())

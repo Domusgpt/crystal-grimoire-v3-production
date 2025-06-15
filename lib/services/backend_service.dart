@@ -374,21 +374,21 @@ class BackendService {
   }
   
   /// Get usage statistics
-  static Future<Map<String, dynamic>> getUsageStats() async {
-    if (!isAuthenticated || _userId == null) {
+  Future<Map<String, dynamic>> getUsageStats() async {
+    if (!this.isAuthenticated || _userId == null) { // Use instance properties
       throw Exception('Authentication required');
     }
     
     try {
-      final response = await http.get(
-        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.usageEndpoint}/$_userId'),
-        headers: _headers,
+      final response = await _httpClient.get( // Use instance client
+        Uri.parse('${BackendConfig.baseUrl}${BackendConfig.usageEndpoint}/$_userId'), // Use instance _userId
+        headers: _headers, // Use instance headers
       ).timeout(BackendConfig.apiTimeout);
       
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else if (response.statusCode == 401) {
-        clearAuth();
+        clearAuth(); // Use instance method
         throw Exception('Authentication required');
       } else {
         throw Exception('Failed to load usage stats');
@@ -398,78 +398,88 @@ class BackendService {
     }
   }
   
-  /// Parse backend response into CrystalIdentification
-  static CrystalIdentification _parseBackendResponse(Map<String, dynamic> data) {
-    final crystalData = data['crystal'];
+  // /// Parse backend response into CrystalIdentification - Obsolete: Replaced by UnifiedCrystalData flow
+  // static CrystalIdentification _parseBackendResponse(Map<String, dynamic> data) {
+  //   final crystalData = data['crystal'];
     
-    final crystal = Crystal(
-      id: crystalData['id'],
-      name: crystalData['name'],
-      scientificName: crystalData['scientificName'] ?? '',
-      group: 'Unknown',
-      description: crystalData['description'] ?? '',
-      chakras: List<String>.from(crystalData['chakras'] ?? []),
-      elements: ['Earth'], // Default element
-      properties: {
-        'healing': List<String>.from(crystalData['healingProperties'] ?? []),
-        'metaphysical': List<String>.from(crystalData['metaphysicalProperties'] ?? []),
-        'hardness': crystalData['hardness'] ?? '',
-        'formation': crystalData['formation'] ?? '',
-      },
-      careInstructions: crystalData['careInstructions'] ?? '',
-    );
+  //   final crystal = Crystal(
+  //     id: crystalData['id'],
+  //     name: crystalData['name'],
+  //     scientificName: crystalData['scientificName'] ?? '',
+  //     group: 'Unknown',
+  //     description: crystalData['description'] ?? '',
+  //     chakras: List<String>.from(crystalData['chakras'] ?? []),
+  //     elements: ['Earth'], // Default element
+  //     properties: {
+  //       'healing': List<String>.from(crystalData['healingProperties'] ?? []),
+  //       'metaphysical': List<String>.from(crystalData['metaphysicalProperties'] ?? []),
+  //       'hardness': crystalData['hardness'] ?? '',
+  //       'formation': crystalData['formation'] ?? '',
+  //     },
+  //     careInstructions: crystalData['careInstructions'] ?? '',
+  //   );
     
-    return CrystalIdentification(
-      sessionId: data['sessionId'],
-      crystal: crystal,
-      confidence: _parseConfidence(data['confidence']),
-      mysticalMessage: data['spiritualMessage'] ?? '',
-      fullResponse: data['fullResponse'] ?? '',
-      timestamp: DateTime.parse(data['timestamp']),
-      needsMoreInfo: data['needsMoreInfo'] ?? false,
-      suggestedAngles: List<String>.from(data['suggestedAngles'] ?? []),
-      observedFeatures: List<String>.from(data['observedFeatures'] ?? []),
-    );
-  }
+  //   return CrystalIdentification(
+  //     sessionId: data['sessionId'],
+  //     crystal: crystal,
+  //     confidence: _parseConfidence(data['confidence']), // Would also need to make _parseConfidence instance or remove
+  //     mysticalMessage: data['spiritualMessage'] ?? '',
+  //     fullResponse: data['fullResponse'] ?? '',
+  //     timestamp: DateTime.parse(data['timestamp']),
+  //     needsMoreInfo: data['needsMoreInfo'] ?? false,
+  //     suggestedAngles: List<String>.from(data['suggestedAngles'] ?? []),
+  //     observedFeatures: List<String>.from(data['observedFeatures'] ?? []),
+  //   );
+  // }
   
-  /// Parse backend crystal data
-  static Crystal _parseBackendCrystal(Map<String, dynamic> data) {
-    return Crystal(
-      id: data['id'],
-      name: data['crystal_name'],
-      scientificName: '',
-      group: 'Unknown',
-      description: data['full_response'] ?? '',
-      chakras: [],
-      elements: [],
-      properties: {},
-      careInstructions: '',
-    );
-  }
+  // /// Parse backend crystal data - Obsolete: Replaced by UnifiedCrystalData flow
+  // static Crystal _parseBackendCrystal(Map<String, dynamic> data) {
+  //   return Crystal(
+  //     id: data['id'],
+  //     name: data['crystal_name'],
+  //     scientificName: '',
+  //     group: 'Unknown',
+  //     description: data['full_response'] ?? '',
+  //     chakras: [],
+  //     elements: [],
+  //     properties: {},
+  //     careInstructions: '',
+  //   );
+  // }
   
   /// Get personalized spiritual guidance using LLM integration
-  static Future<Map<String, dynamic>> getPersonalizedGuidance({
+  Future<Map<String, dynamic>> getPersonalizedGuidance({
     required String guidanceType,
-    required Map<String, dynamic> userProfile,
+    required Map<String, dynamic> userProfile, // Keep as Map for flexibility with JSON
     required String customPrompt,
   }) async {
     try {
-      final uri = Uri.parse('${BackendConfig.baseUrl}/spiritual/guidance');
-      final request = http.MultipartRequest('POST', uri);
+      final uri = Uri.parse('${BackendConfig.baseUrl}/spiritual/guidance'); // Assuming this endpoint exists
       
-      // Add headers
-      BackendConfig.headers.forEach((key, value) {
-        request.headers[key] = value;
+      // Using MultipartRequest and then converting to StreamedRequest to send via _httpClient
+      final multipartRequest = http.MultipartRequest('POST', uri);
+      
+      multipartRequest.headers.addAll(_headers);
+
+      multipartRequest.fields['guidance_type'] = guidanceType;
+      multipartRequest.fields['user_profile'] = jsonEncode(userProfile);
+      multipartRequest.fields['custom_prompt'] = customPrompt;
+      
+      print('🔮 Requesting personalized guidance: $guidanceType via instance method');
+
+      final streamedRequest = http.StreamedRequest(
+        multipartRequest.method,
+        multipartRequest.url,
+      );
+      streamedRequest.headers.addAll(multipartRequest.headers);
+      
+      multipartRequest.finalize().pipe(streamedRequest.sink).catchError((e) {
+        print("Error piping request: $e");
+        throw e;
       });
-      
-      // Add form fields
-      request.fields['guidance_type'] = guidanceType;
-      request.fields['user_profile'] = jsonEncode(userProfile);
-      request.fields['custom_prompt'] = customPrompt;
-      
-      print('🔮 Requesting personalized guidance: $guidanceType');
-      
-      final streamedResponse = await request.send().timeout(BackendConfig.apiTimeout);
+
+      final http.StreamedResponse streamedResponse = await _httpClient.send(streamedRequest)
+          .timeout(BackendConfig.apiTimeout);
       final response = await http.Response.fromStream(streamedResponse);
       
       if (response.statusCode == 200) {
@@ -482,9 +492,8 @@ class BackendService {
       }
     } catch (e) {
       print('❌ Error getting personalized guidance: $e');
-      // Return fallback guidance
       return {
-        'guidance': _getFallbackGuidance(guidanceType),
+        'guidance': _getFallbackGuidance(guidanceType), // Instance method call
         'source': 'fallback',
         'timestamp': DateTime.now().toIso8601String(),
       };
@@ -492,7 +501,7 @@ class BackendService {
   }
   
   /// Fallback guidance when LLM service is unavailable
-  static String _getFallbackGuidance(String guidanceType) {
+  String _getFallbackGuidance(String guidanceType) { // Made instance method
     switch (guidanceType) {
       case 'daily':
         return "Beloved seeker, today is a perfect day to connect with your crystal allies. Hold your favorite crystal in meditation and set a clear intention for the day ahead. Trust your intuition to guide you.";
@@ -508,17 +517,18 @@ class BackendService {
   }
 
   /// Parse confidence string to double
-  static double _parseConfidence(dynamic confidence) {
-    if (confidence is double) return confidence;
-    if (confidence is int) return confidence.toDouble();
-    if (confidence is String) {
-      switch (confidence.toLowerCase()) {
-        case 'high': return 0.9;
-        case 'medium': return 0.7;
-        case 'low': return 0.5;
-        default: return 0.7;
-      }
-    }
-    return 0.7;
-  }
+  // /// Parse confidence string to double - Obsolete: Part of _parseBackendResponse
+  // static double _parseConfidence(dynamic confidence) {
+  //   if (confidence is double) return confidence;
+  //   if (confidence is int) return confidence.toDouble();
+  //   if (confidence is String) {
+  //     switch (confidence.toLowerCase()) {
+  //       case 'high': return 0.9;
+  //       case 'medium': return 0.7;
+  //       case 'low': return 0.5;
+  //       default: return 0.7;
+  //     }
+  //   }
+  //   return 0.7;
+  // }
 }

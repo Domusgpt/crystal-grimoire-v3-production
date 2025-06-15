@@ -234,17 +234,100 @@ void main() {
 
     test('_headers includes auth token when authenticated', () {
       backendService.setAuth("test_token", "user_123");
-      final headers = backendService.httpClient.head(Uri(), headers: backendService.getAuthHeadersForTestingOnly()); // A bit of a hack to get headers
-      // This is not ideal. Need to verify headers on actual calls.
-      // The `_headers` getter is private. We verify its effect in actual API call tests.
-      // For example, in identifyCrystal success test:
-      // final capturedHeaders = verify(mockClient.post(any, headers: captureAnyNamed('headers'), body: anyNamed('body'))).captured.first as Map<String, String>;
-      // expect(capturedHeaders['Authorization'], 'Bearer test_token');
-       expect(true, isTrue); // Placeholder - verified in actual calls
+      // Verify by making a call and capturing headers
+      when(mockClient.get(any, headers: anyNamed('headers')))
+          .thenAnswer((_) async => http.Response('{}', 200));
+      await backendService.getUserCollection(); // Make any call that uses _headers
+
+      final captured = verify(mockClient.get(any, headers: captureAnyNamed('headers'))).captured;
+      final capturedHeaders = captured.first as Map<String,String>;
+      expect(capturedHeaders['Authorization'], 'Bearer test_token');
     });
-     test('_headers does not include auth token when not authenticated', () {
+
+     test('_headers does not include auth token when not authenticated', () async {
+      backendService.clearAuth(); // Ensure no auth token
+      when(mockClient.get(any, headers: anyNamed('headers')))
+          .thenAnswer((_) async => http.Response('{}', 200));
+      await backendService.getUserCollection();
+
+      final captured = verify(mockClient.get(any, headers: captureAnyNamed('headers'))).captured;
+      final capturedHeaders = captured.first as Map<String,String>;
+      expect(capturedHeaders['Authorization'], isNull);
+    });
+  });
+
+  group('BackendService getUsageStats', () {
+    test('getUsageStats success returns stats map', () async {
+      backendService.setAuth("test_token", "user_stats_test");
+      final statsResponseJson = jsonEncode({'total_identifications': 10, 'collection_size': 5});
+      final expectedUri = Uri.parse('$baseUrl${BackendConfig.usageEndpoint}/user_stats_test');
+
+      when(mockClient.get(expectedUri, headers: anyNamed('headers')))
+          .thenAnswer((_) async => http.Response(statsResponseJson, 200));
+
+      final result = await backendService.getUsageStats();
+
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result['total_identifications'], 10);
+      verify(mockClient.get(expectedUri, headers: captureAnyNamed('headers'))).called(1);
+    });
+
+    test('getUsageStats throws if not authenticated', () async {
       backendService.clearAuth();
-       expect(true, isTrue); // Placeholder - verified in actual calls
+      expect(() => backendService.getUsageStats(),
+        throwsA(predicate((e) => e is Exception && e.toString().contains('Authentication required'))));
+    });
+  });
+
+  group('BackendService getPersonalizedGuidance', () {
+    final guidanceParams = {
+      'guidanceType': 'daily_focus',
+      'userProfile': {'sun_sign': 'Leo', 'mood': 'adventurous'},
+      'customPrompt': 'What should I focus on today?'
+    };
+    final successResponseJson = jsonEncode({'guidance': 'Focus on creativity!', 'source': 'llm'});
+
+    test('getPersonalizedGuidance success returns guidance map', () async {
+      backendService.setAuth("test_token", "user_guidance_test");
+      final expectedUri = Uri.parse('$baseUrl/spiritual/guidance');
+
+      // Mocking httpClient.send for StreamedRequest
+      when(mockClient.send(any)).thenAnswer((_) async {
+        // Simulate a streamed response
+        final responseStream = http.StreamedResponse(
+          Stream.value(utf8.encode(successResponseJson)), // Stream the JSON string bytes
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+        return responseStream;
+      });
+
+      final result = await backendService.getPersonalizedGuidance(
+        guidanceType: guidanceParams['guidanceType'] as String,
+        userProfile: guidanceParams['userProfile'] as Map<String, dynamic>,
+        customPrompt: guidanceParams['customPrompt'] as String,
+      );
+
+      expect(result, isA<Map<String, dynamic>>());
+      expect(result['guidance'], 'Focus on creativity!');
+
+      final VerificationResult capturedRequest = verify(mockClient.send(captureAny)).captured.single;
+      final http.StreamedRequest actualRequest = capturedRequest.invocation.positionalArguments.first;
+      expect(actualRequest.url, expectedUri);
+      // Further verification of multipart fields would require more complex argument matching or capturing if possible.
+    });
+
+    test('getPersonalizedGuidance returns fallback on API error', () async {
+       when(mockClient.send(any)).thenAnswer((_) async {
+        final responseStream = http.StreamedResponse(Stream.value(utf8.encode("error")), 500);
+        return responseStream;
+      });
+
+      final result = await backendService.getPersonalizedGuidance(
+        guidanceType: 'daily', userProfile: {}, customPrompt: 'help'
+      );
+      expect(result['source'], 'fallback');
+      expect(result['guidance'], isNotEmpty);
     });
   });
 
@@ -270,6 +353,6 @@ class MockPlatformFile extends Mock implements PlatformFile {
 
 // Add a helper extension to access the private _headers for testing purposes if absolutely necessary
 // This is generally not recommended but can be a workaround for testing private getters.
-extension BackendServiceTestExtension on BackendService {
-  Map<String, String> getAuthHeadersForTestingOnly() => _headers;
-}
+// extension BackendServiceTestExtension on BackendService {
+//   Map<String, String> getAuthHeadersForTestingOnly() => _headers;
+// }
