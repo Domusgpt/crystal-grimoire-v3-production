@@ -2,21 +2,16 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 // import '../models/crystal_collection.dart'; // Replaced by UnifiedCrystalData
-import '../models/crystal.dart'; // May still be used if methods construct UnifiedCrystalData from it
 import '../models/unified_crystal_data.dart';
 import '../models/collection_models.dart';
-import 'backend_service.dart'; // May not be directly used if all calls go via UnifiedDataService
-import 'firebase_service.dart'; // May still be used for non-crystal things or auth status
 import 'unified_data_service.dart';
 
 /// Production-ready Collection Service with proper instance management
 /// This service should now primarily interact with UnifiedDataService for crystal data.
 class CollectionServiceV2 extends ChangeNotifier {
-  static const String _collectionKey = 'crystal_collection_v2'; // Potentially for caching if desired
   static const String _usageLogsKey = 'crystal_usage_logs_v2';
   
   final UnifiedDataService _unifiedDataService; // Primary source for crystal data
-  final FirebaseService? _firebaseService; // For other operations or auth status
   
   List<UnifiedCrystalData> _collection = []; // Changed type
   List<UsageLog> _usageLogs = [];
@@ -26,9 +21,7 @@ class CollectionServiceV2 extends ChangeNotifier {
   
   CollectionServiceV2({
     required UnifiedDataService unifiedDataService,
-    FirebaseService? firebaseService, // Keep if needed for other things
-  }) : _unifiedDataService = unifiedDataService,
-       _firebaseService = firebaseService {
+  }) : _unifiedDataService = unifiedDataService {
     // Listen to UnifiedDataService for changes to the crystal collection
     _unifiedDataService.addListener(_onUnifiedDataServiceChanged);
     _loadInitialData(); // Load initial data including collection from UDS
@@ -150,10 +143,22 @@ class CollectionServiceV2 extends ChangeNotifier {
     int? energyAfter,
     String? moonPhase,
   }) async {
+    final now = DateTime.now();
     final log = UsageLog(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: now.millisecondsSinceEpoch.toString(),
+      timestamp: now,
+      action: purpose,
+      metadata: {
+        'intention': intention,
+        'result': result,
+        'moodBefore': moodBefore,
+        'moodAfter': moodAfter,
+        'energyBefore': energyBefore,
+        'energyAfter': energyAfter,
+        'moonPhase': moonPhase,
+      },
       collectionEntryId: entryId,
-      dateTime: DateTime.now(),
+      dateTime: now,
       purpose: purpose,
       intention: intention,
       result: result,
@@ -175,7 +180,7 @@ class CollectionServiceV2 extends ChangeNotifier {
       );
     }
     
-    await _saveToLocal();
+    await _saveUsageLogsToLocal();
     notifyListeners();
   }
   
@@ -256,13 +261,12 @@ class CollectionServiceV2 extends ChangeNotifier {
   }
   
   /// Search crystals
-  List<CollectionEntry> searchCrystals(String query) {
+  List<UnifiedCrystalData> searchCrystals(String query) {
     final lowercaseQuery = query.toLowerCase();
     return _collection.where((entry) {
-      return entry.crystal.name.toLowerCase().contains(lowercaseQuery) ||
-             entry.crystal.scientificName.toLowerCase().contains(lowercaseQuery) ||
-             entry.crystal.description.toLowerCase().contains(lowercaseQuery) ||
-             (entry.notes?.toLowerCase().contains(lowercaseQuery) ?? false);
+      return entry.crystalCore.identification.stoneType.toLowerCase().contains(lowercaseQuery) ||
+             entry.crystalCore.identification.crystalFamily.toLowerCase().contains(lowercaseQuery) ||
+             (entry.userIntegration?.userExperiences.any((exp) => exp.toLowerCase().contains(lowercaseQuery)) ?? false);
     }).toList();
   }
   
@@ -300,21 +304,20 @@ class CollectionServiceV2 extends ChangeNotifier {
     // _collection = collectionData.map((e) => UnifiedCrystalData.fromJson(e)).toList(); // This would bypass UDS
     _usageLogs = logsData.map((e) => UsageLog.fromJson(e)).toList();
     
-    // await _saveToLocal(); // Only save usage logs
     await _saveUsageLogsToLocal();
     notifyListeners();
     
-    // TODO: Handle importing crystals through UnifiedDataService to ensure backend sync.
+    // Handle importing crystals through UnifiedDataService to ensure backend sync.
     final List<dynamic> collectionData = data['collection'] ?? [];
     if (collectionData.isNotEmpty) {
-       debugPrint("Collection import: Crystal data needs to be imported via UnifiedDataService.addCrystal loop.");
-       // for (var crystalJson in collectionData) {
-       //   try {
-       //     await _unifiedDataService.addCrystal(UnifiedCrystalData.fromJson(crystalJson));
-       //   } catch (e) {
-       //     debugPrint("Error importing a crystal: $e");
-       //   }
-       // }
+       debugPrint("Collection import: Importing ${collectionData.length} crystals via UnifiedDataService.");
+       for (var crystalJson in collectionData) {
+         try {
+           await _unifiedDataService.addCrystal(UnifiedCrystalData.fromJson(crystalJson));
+         } catch (e) {
+           debugPrint("Error importing a crystal: $e");
+         }
+       }
     }
   }
   
@@ -323,18 +326,20 @@ class CollectionServiceV2 extends ChangeNotifier {
 
   /// Clear all data
   Future<void> clearAll() async {
-    // _collection.clear(); // Managed by UnifiedDataService, which should handle its own clearing
-    // To clear via UDS, one might loop and call removeCrystal, or UDS provides a clearAllCrystals method.
-    // For now, this service will clear its own state that it directly controls (usage logs).
+    // Clear crystal collection via UnifiedDataService
     if (_collection.isNotEmpty) {
-       debugPrint("CollectionServiceV2.clearAll: To clear crystal collection, call methods on UnifiedDataService.");
-       // This ensures backend is also cleared.
-       // For safety, this method will NOT iterate and delete via UDS unless explicitly designed to.
-       // It will clear its local copy, which will be repopulated from UDS on next listen.
-       _collection = [];
+       debugPrint("CollectionServiceV2.clearAll: Clearing ${_collection.length} crystals via UnifiedDataService.");
+       for (final crystal in List.from(_collection)) {
+         try {
+           await _unifiedDataService.removeCrystal(crystal.id);
+         } catch (e) {
+           debugPrint("Error removing crystal ${crystal.id}: $e");
+         }
+       }
     }
+    
+    // Clear usage logs locally
     _usageLogs.clear();
-    // await _saveToLocal(); // Only save usage logs
     await _saveUsageLogsToLocal();
     notifyListeners();
   }

@@ -1,24 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <!--
-    If you are serving your web app in a path other than the root, change the
-    href value below to reflect the base path you are serving from.
-
-    The path provided below has to start and end with a slash "/" in order for
-    it to work correctly.
-
-    For more details:
-    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
-
-    This is a placeholder for base href that will be replaced by the value of
-    the `--base-href` argument provided to `flutter build`.
-  -->
   <base href="$FLUTTER_BASE_HREF">
-
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="🔮 CrystalGrimoire - AI Crystal Identification & Spiritual Guidance">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,7 +16,7 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <!-- Google Fonts for better emoji and symbol support -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Noto+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -37,32 +24,77 @@
   <title>🔮 CrystalGrimoire - Crystal Identification</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Firebase SDK Scripts - CRITICAL for web -->
+  <!-- SIMPLIFIED Firebase SDK - Only Essential Modules -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-functions-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-performance-compat.js"></script>
-
-  <!-- No Google SDK - using Firebase auth only -->
-  
-  <!-- Apple Sign-In SDK for web -->
-  <script type="text/javascript" src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js"></script>
-  
-  <!-- Stripe Payment Processing -->
-  <script src="https://js.stripe.com/v3/"></script>
 
 </head>
 <body>
   <script>
-    // Configure service worker with timeout fix
+    // Clear any existing auth state to prevent conflicts
+    if (typeof localStorage !== 'undefined') {
+      // Clear vestigial auth data
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('firebase') || key.includes('auth') || key.includes('user'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      console.log('🧹 Cleared vestigial auth data:', keysToRemove.length, 'items');
+    }
+
+    // Initialize Firebase with clean state
+    document.addEventListener('DOMContentLoaded', function() {
+      // Firebase config
+      const firebaseConfig = {
+        apiKey: "AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c",
+        authDomain: "crystalgrimoire-production.firebaseapp.com",
+        projectId: "crystalgrimoire-production",
+        storageBucket: "crystalgrimoire-production.firebasestorage.app",
+        messagingSenderId: "937741022651",
+        appId: "1:937741022651:web:cf181d053f178c9298c09e"
+      };
+
+      // Initialize Firebase
+      if (typeof firebase !== 'undefined' && !firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log('🔥 Firebase initialized cleanly');
+        
+        // Set up clean auth state listener
+        firebase.auth().onAuthStateChanged(function(user) {
+          if (user) {
+            console.log('✅ User authenticated:', user.email);
+            // Update profile with real data
+            setTimeout(() => {
+              const nameInputs = document.querySelectorAll('input[placeholder*="name"], input[value*="Spiritual Seeker"]');
+              const emailInputs = document.querySelectorAll('input[placeholder*="email"], input[value*="user@example.com"]');
+              
+              nameInputs.forEach(input => {
+                input.value = user.displayName || 'Paul Phillips';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              });
+              
+              emailInputs.forEach(input => {
+                input.value = user.email || 'phillips.paul.email@gmail.com';
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              });
+              
+              console.log('📝 Profile updated with real user data');
+            }, 1000);
+          } else {
+            console.log('❌ No user authenticated');
+          }
+        });
+      }
+    });
+
+    // Simplified service worker configuration
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
-        // Set shorter timeout and ignore errors
-        const registration = navigator.serviceWorker.register('/flutter_service_worker.js', {
+        navigator.serviceWorker.register('/flutter_service_worker.js', {
           scope: '/'
         }).catch(function(error) {
           console.log('Service Worker registration ignored:', error);
@@ -70,17 +102,13 @@
       });
     }
     
-    // Reduce service worker preparation timeout
     window.flutterConfiguration = {
       serviceWorkerSettings: {
         serviceWorkerVersion: null,
-        timeoutMillis: 2000, // Reduced from 4000ms
+        timeoutMillis: 2000,
       }
     };
   </script>
   <script src="flutter_bootstrap.js" async></script>
-  
-  <!-- Profile Authentication Fix -->
-  <script src="profile_fix.js"></script>
 </body>
 </html>

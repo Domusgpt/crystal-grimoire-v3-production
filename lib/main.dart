@@ -158,14 +158,13 @@ class CrystalGrimoireApp extends StatelessWidget {
             previous ?? StripeService(firebaseService: firebase),
         ),
         
-        // Collection service with Firebase integration
-        ChangeNotifierProxyProvider2<FirebaseService, UnifiedDataService, CollectionServiceV2>(
+        // Collection service with unified data integration
+        ChangeNotifierProxyProvider<UnifiedDataService, CollectionServiceV2>(
           create: (context) => CollectionServiceV2(
-            firebaseService: context.read<FirebaseService>(),
             unifiedDataService: context.read<UnifiedDataService>(),
           )..initialize(),
-          update: (context, firebase, unified, previous) => 
-            previous ?? CollectionServiceV2(firebaseService: firebase, unifiedDataService: unified)..initialize(),
+          update: (context, unified, previous) => 
+            previous ?? CollectionServiceV2(unifiedDataService: unified)..initialize(),
         ),
         
         // App state connected to collection service

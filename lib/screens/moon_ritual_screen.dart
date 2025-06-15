@@ -79,8 +79,8 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
     
     // Filter to show only crystals the user owns
     recommendedCrystals = collectionService.collection
-        .where((entry) => phaseCrystals.contains(entry.crystal.name))
-        .map((entry) => entry.crystal.name)
+        .where((entry) => phaseCrystals.contains(entry.crystalCore.identification.stoneType))
+        .map((entry) => entry.crystalCore.identification.stoneType)
         .toList();
   }
 

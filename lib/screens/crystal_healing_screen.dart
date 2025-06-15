@@ -138,8 +138,8 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
     
     // Filter to show only crystals the user owns
     recommendedCrystals = collectionService.collection
-        .where((entry) => chakraCrystals.contains(entry.crystal.name))
-        .map((entry) => entry.crystal.name)
+        .where((entry) => chakraCrystals.contains(entry.crystalCore.identification.stoneType))
+        .map((entry) => entry.crystalCore.identification.stoneType)
         .toList();
   }
 

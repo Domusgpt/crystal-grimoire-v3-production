@@ -127,7 +127,7 @@ class BackendService {
   }
   
   /// Identify crystal using backend API
-  Future<UnifiedCrystalData> identifyCrystal({
+  static Future<UnifiedCrystalData> identifyCrystal({
     required List<PlatformFile> images, // Backend expects one image
     String? userTextContext, // General text from user
     String? sessionId, // Optional session ID
@@ -163,9 +163,12 @@ class BackendService {
          (requestBody['user_context'] as Map<String, dynamic>)['session_id'] = sessionId;
       }
 
-      final response = await _httpClient.post(
+      final client = http.Client();
+      final headers = Map<String, String>.from(BackendConfig.headers)..addAll({'Content-Type': 'application/json'});
+      
+      final response = await client.post(
         Uri.parse('${BackendConfig.baseUrl}${BackendConfig.identifyEndpoint}'),
-        headers: _headers..addAll({'Content-Type': 'application/json'}),
+        headers: headers,
         body: jsonEncode(requestBody),
       ).timeout(BackendConfig.uploadTimeout);
       
@@ -173,7 +176,6 @@ class BackendService {
         final data = jsonDecode(response.body);
         return UnifiedCrystalData.fromJson(data);
       } else if (response.statusCode == 401) {
-        clearAuth(); // Instance method
         throw Exception('Authentication required');
       } else if (response.statusCode == 429) { // Assuming 429 might still be used
         throw Exception('API limit reached or other restriction.');
@@ -447,7 +449,7 @@ class BackendService {
   // }
   
   /// Get personalized spiritual guidance using LLM integration
-  Future<Map<String, dynamic>> getPersonalizedGuidance({
+  static Future<Map<String, dynamic>> getPersonalizedGuidance({
     required String guidanceType,
     required Map<String, dynamic> userProfile, // Keep as Map for flexibility with JSON
     required String customPrompt,
@@ -455,16 +457,19 @@ class BackendService {
     try {
       final uri = Uri.parse('${BackendConfig.baseUrl}/spiritual/guidance'); // Assuming this endpoint exists
       
-      // Using MultipartRequest and then converting to StreamedRequest to send via _httpClient
+      final client = http.Client();
+      final headers = Map<String, String>.from(BackendConfig.headers);
+      
+      // Using MultipartRequest and then converting to StreamedRequest to send via client
       final multipartRequest = http.MultipartRequest('POST', uri);
       
-      multipartRequest.headers.addAll(_headers);
+      multipartRequest.headers.addAll(headers);
 
       multipartRequest.fields['guidance_type'] = guidanceType;
       multipartRequest.fields['user_profile'] = jsonEncode(userProfile);
       multipartRequest.fields['custom_prompt'] = customPrompt;
       
-      print('🔮 Requesting personalized guidance: $guidanceType via instance method');
+      print('🔮 Requesting personalized guidance: $guidanceType via static method');
 
       final streamedRequest = http.StreamedRequest(
         multipartRequest.method,
@@ -477,7 +482,7 @@ class BackendService {
         throw e;
       });
 
-      final http.StreamedResponse streamedResponse = await _httpClient.send(streamedRequest)
+      final http.StreamedResponse streamedResponse = await client.send(streamedRequest)
           .timeout(BackendConfig.apiTimeout);
       final response = await http.Response.fromStream(streamedResponse);
       
@@ -492,7 +497,7 @@ class BackendService {
     } catch (e) {
       print('❌ Error getting personalized guidance: $e');
       return {
-        'guidance': _getFallbackGuidance(guidanceType), // Instance method call
+        'guidance': _getFallbackGuidance(guidanceType), // Static method call
         'source': 'fallback',
         'timestamp': DateTime.now().toIso8601String(),
       };
@@ -500,7 +505,7 @@ class BackendService {
   }
   
   /// Fallback guidance when LLM service is unavailable
-  String _getFallbackGuidance(String guidanceType) { // Made instance method
+  static String _getFallbackGuidance(String guidanceType) { // Made static method
     switch (guidanceType) {
       case 'daily':
         return "Beloved seeker, today is a perfect day to connect with your crystal allies. Hold your favorite crystal in meditation and set a clear intention for the day ahead. Trust your intuition to guide you.";

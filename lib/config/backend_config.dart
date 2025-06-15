@@ -1,80 +1,34 @@
-import 'package:http/http.dart' as http;
-
-/// Backend API Configuration for CrystalGrimoire
 class BackendConfig {
-  // Environment-based backend URL configuration
-  static const bool _isProduction = bool.fromEnvironment('PRODUCTION', defaultValue: false);
-  static const String _customBackendUrl = String.fromEnvironment('BACKEND_URL', defaultValue: '');
+  // Enable unified backend for production deployment
+  static const bool useBackend = true;
+  static const bool useUnifiedDataService = true;
   
-  // Backend API URL - Environment based
-  static String get baseUrl {
-    if (_customBackendUrl.isNotEmpty) {
-      return '$_customBackendUrl/api';
-    }
-    
-    return _isProduction 
-      ? 'https://crystalgrimoire-production.web.app/api'
-      : 'http://localhost:8081/api';
-  }
-  
-  // Use backend API if available, otherwise use direct AI
-  static const bool useBackend = true; // Enabled - unified backend integrated
-  
-  // Environment-based backend forcing
-  static bool get forceBackendIntegration => 
-    const bool.fromEnvironment('FORCE_BACKEND', defaultValue: false);
+  // API Configuration
+  static const String baseUrl = 'https://crystalgrimoire-production.web.app';
+  static const String apiVersion = 'v3';
   
   // API Endpoints
-  static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
-  static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
-  // Old endpoints, potentially to be removed or refactored if CollectionEntry is fully deprecated
-  static const String oldCollectionEndpoint = '/crystal/collection';
-  static const String oldSaveEndpoint = '/crystal/save';
-  static const String usageEndpoint = '/usage';
+  static const String identifyEndpoint = '/api/crystal/identify';
+  static const String crystalsEndpoint = '/api/crystals';
+  static const String usageEndpoint = '/api/usage';
+  static const String guidanceEndpoint = '/api/guidance';
   
-  // Timeouts
+  // HTTP Configuration
+  static const Map<String, String> headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  };
+  
   static const Duration apiTimeout = Duration(seconds: 30);
   static const Duration uploadTimeout = Duration(seconds: 60);
   
-  // Headers
-  static Map<String, String> get headers => {
-    'Accept': 'application/json',
-    // Add auth headers when implemented
-  };
+  // Feature flags
+  static const bool enableCrystalIdentification = true;
+  static const bool enablePersonalizedGuidance = true;
+  static const bool enableMoonRituals = true;
+  static const bool enableCrystalHealing = true;
   
-  // Check if backend is available
-  static Future<bool> isBackendAvailable() async {
-    if (!useBackend) return false;
-    
-    try {
-      final healthUrl = baseUrl.replaceAll('/api', '/health');
-      final response = await http.get(
-        Uri.parse(healthUrl),
-        headers: headers,
-      ).timeout(Duration(seconds: 5));
-      
-      return response.statusCode == 200;
-    } catch (e) {
-      print('Backend not available at $baseUrl: $e');
-      return false;
-    }
-  }
-  
-  // Get configuration summary
-  static Map<String, dynamic> getConfigSummary() {
-    return {
-      'base_url': baseUrl,
-      'is_production': _isProduction,
-      'custom_backend_url': _customBackendUrl.isNotEmpty ? 'configured' : 'not_set',
-      'use_backend': useBackend,
-      'force_backend': forceBackendIntegration,
-      'endpoints': {
-        'identify': '$baseUrl$identifyEndpoint',
-        'crystals': '$baseUrl$crystalsEndpoint',
-        'old_collection': '$baseUrl$oldCollectionEndpoint',
-        'old_save': '$baseUrl$oldSaveEndpoint',
-        'usage': '$baseUrl$usageEndpoint',
-      }
-    };
-  }
+  // Development flags
+  static const bool enableDebugLogging = true;
+  static const bool enableOfflineMode = true;
 }

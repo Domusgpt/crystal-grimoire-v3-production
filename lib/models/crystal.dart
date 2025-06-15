@@ -1,4 +1,3 @@
-import 'dart:convert';
 
 enum ConfidenceLevel {
   uncertain,
@@ -39,10 +38,18 @@ class Crystal {
   final ConfidenceLevel? confidence;
   final String? userNotes;
   
+  // Missing properties needed for compatibility
+  final String category;
+  final List<String> intentions;
+  final List<String> colors;
+  final String transparency;
+  final String luster;
+  final String? sourceUrl;
+  final bool aiGenerated;
+  
   // Auto-classified metaphysical properties
   final String type;
   final String color;
-  final String imageUrl;
   final List<String> planetaryRulers;
   final List<String> zodiacSigns;
   final String crystalSystem;
@@ -71,7 +78,6 @@ class Crystal {
     // Auto-classified properties
     this.type = 'Unknown',
     this.color = 'Unknown',
-    this.imageUrl = '',
     this.planetaryRulers = const [],
     this.zodiacSigns = const [],
     this.crystalSystem = 'Unknown',
@@ -96,6 +102,14 @@ class Crystal {
     this.imageUrls = const [],
     this.confidence,
     this.userNotes,
+    // New compatibility properties
+    this.category = 'Unknown',
+    this.intentions = const [],
+    this.colors = const [],
+    this.transparency = 'Unknown',
+    this.luster = 'Unknown',
+    this.sourceUrl,
+    this.aiGenerated = false,
   });
 
   factory Crystal.fromJson(Map<String, dynamic> json) {
@@ -122,6 +136,14 @@ class Crystal {
           ? ConfidenceLevel.values.byName(json['confidence']) 
           : null,
       userNotes: json['userNotes'],
+      // New compatibility properties
+      category: json['category'] ?? json['group'] ?? 'Unknown',
+      intentions: List<String>.from(json['intentions'] ?? json['recommendedIntentions'] ?? []),
+      colors: List<String>.from(json['colors'] ?? [json['color'] ?? 'Unknown'].where((c) => c != 'Unknown')),
+      transparency: json['transparency'] ?? 'Unknown',
+      luster: json['luster'] ?? 'Unknown',
+      sourceUrl: json['sourceUrl'],
+      aiGenerated: json['aiGenerated'] ?? false,
     );
   }
 
@@ -145,6 +167,14 @@ class Crystal {
       'imageUrls': imageUrls,
       'confidence': confidence?.name,
       'userNotes': userNotes,
+      // New compatibility properties
+      'category': category,
+      'intentions': intentions,
+      'colors': colors,
+      'transparency': transparency,
+      'luster': luster,
+      'sourceUrl': sourceUrl,
+      'aiGenerated': aiGenerated,
     };
   }
 
@@ -167,6 +197,13 @@ class Crystal {
     List<String>? imageUrls,
     ConfidenceLevel? confidence,
     String? userNotes,
+    String? category,
+    List<String>? intentions,
+    List<String>? colors,
+    String? transparency,
+    String? luster,
+    String? sourceUrl,
+    bool? aiGenerated,
   }) {
     return Crystal(
       id: id ?? this.id,
@@ -187,6 +224,13 @@ class Crystal {
       imageUrls: imageUrls ?? this.imageUrls,
       confidence: confidence ?? this.confidence,
       userNotes: userNotes ?? this.userNotes,
+      category: category ?? this.category,
+      intentions: intentions ?? this.intentions,
+      colors: colors ?? this.colors,
+      transparency: transparency ?? this.transparency,
+      luster: luster ?? this.luster,
+      sourceUrl: sourceUrl ?? this.sourceUrl,
+      aiGenerated: aiGenerated ?? this.aiGenerated,
     );
   }
 }
