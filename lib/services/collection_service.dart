@@ -9,12 +9,17 @@ class CollectionService {
   static const String _collectionKey = 'crystal_collection';
   static const String _usageLogsKey = 'crystal_usage_logs';
   
-  static List<CollectionEntry> _collection = [];
-  static List<UsageLog> _usageLogs = [];
+  // static List<CollectionEntry> _collection = []; // Managed by UnifiedDataService
+  static List<UsageLog> _usageLogs = []; // Usage logs can remain managed here if not part of backend
   static bool _isLoaded = false;
 
-  /// Get the current collection
-  static List<CollectionEntry> get collection => List.unmodifiable(_collection);
+  /// Get the current collection - DEPRECATED: Use UnifiedDataService.crystalCollection
+  static List<CollectionEntry> get collection {
+    // This getter is problematic as UnifiedDataService holds UnifiedCrystalData.
+    // For now, returning an empty list or throwing error to indicate deprecation.
+    debugPrint("CollectionService.collection getter is deprecated. Use UnifiedDataService.");
+    return [];
+  }
   
   /// Get usage logs
   static List<UsageLog> get usageLogs => List.unmodifiable(_usageLogs);
@@ -24,15 +29,8 @@ class CollectionService {
     if (_isLoaded) return;
     
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load collection
-    final collectionJson = prefs.getString(_collectionKey);
-    if (collectionJson != null) {
-      final List<dynamic> decoded = json.decode(collectionJson);
-      _collection = decoded.map((e) => CollectionEntry.fromJson(e)).toList();
-    }
-    
-    // Load usage logs
+
+    // Load usage logs (crystal collection is no longer loaded here)
     final logsJson = prefs.getString(_usageLogsKey);
     if (logsJson != null) {
       final List<dynamic> decoded = json.decode(logsJson);
@@ -41,62 +39,32 @@ class CollectionService {
     
     _isLoaded = true;
     
-    // Sync with backend if authenticated
-    if (BackendService.isAuthenticated) {
-      await _syncWithBackend();
-    }
+    // Sync with backend if authenticated - This was for its own collection, now removed.
+    // if (BackendService.isAuthenticated) {
+    //   await _syncWithBackend();
+    // }
+    debugPrint("CollectionService initialized (Usage Logs only). Crystal collection managed by UnifiedDataService.");
   }
 
-  /// Add a crystal to the collection
-  static Future<CollectionEntry> addCrystal({
-    required Crystal crystal,
-    required String source,
-    String? location,
-    double? price,
-    required String size,
-    required String quality,
-    List<String>? primaryUses,
-    String? notes,
-    List<String>? images,
-  }) async {
-    await initialize();
-    
-    final entry = CollectionEntry.create(
-      userId: BackendService.currentUserId ?? 'local',
-      crystal: crystal,
-      source: source,
-      location: location,
-      price: price,
-      size: size,
-      quality: quality,
-      primaryUses: primaryUses,
-      notes: notes,
-      images: images,
-    );
-    
-    _collection.add(entry);
-    await _saveCollection();
-    
-    // Sync with backend
-    if (BackendService.isAuthenticated) {
-      await _syncEntryToBackend(entry);
-    }
-    
-    return entry;
-  }
+  // /// Add a crystal to the collection - DEPRECATED: Use UnifiedDataService.addCrystal
+  // static Future<CollectionEntry> addCrystal({
+  //   required Crystal crystal,
+  //   required String source,
+  //   String? location,
+  //   double? price,
+  //   required String size,
+  //   required String quality,
+  //   List<String>? primaryUses,
+  //   String? notes,
+  //   List<String>? images,
+  // }) async {
+  //   throw UnimplementedError("CollectionService.addCrystal is deprecated. Use UnifiedDataService.");
+  // }
 
-  /// Update a collection entry
-  static Future<void> updateEntry(CollectionEntry entry) async {
-    final index = _collection.indexWhere((e) => e.id == entry.id);
-    if (index != -1) {
-      _collection[index] = entry;
-      await _saveCollection();
-      
-      if (BackendService.isAuthenticated) {
-        await _syncEntryToBackend(entry);
-      }
-    }
-  }
+  // /// Update a collection entry - DEPRECATED: Use UnifiedDataService.updateCrystal
+  // static Future<void> updateEntry(CollectionEntry entry) async {
+  //   throw UnimplementedError("CollectionService.updateEntry is deprecated. Use UnifiedDataService.");
+  // }
 
   /// Record crystal usage
   static Future<UsageLog> recordUsage({
@@ -253,11 +221,9 @@ class CollectionService {
   }
 
   /// Save collection to local storage
-  static Future<void> _saveCollection() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = jsonEncode(_collection.map((e) => e.toJson()).toList());
-    await prefs.setString(_collectionKey, json);
-  }
+  // static Future<void> _saveCollection() async {
+  //   // Deprecated as collection is not managed here
+  // }
 
   /// Save usage logs to local storage
   static Future<void> _saveUsageLogs() async {
@@ -267,24 +233,25 @@ class CollectionService {
   }
 
   /// Sync with backend
-  static Future<void> _syncWithBackend() async {
-    // TODO: Implement backend sync when backend endpoints are ready
-  }
+  // static Future<void> _syncWithBackend() async {
+  //   // Deprecated
+  // }
 
-  /// Sync single entry to backend
-  static Future<void> _syncEntryToBackend(CollectionEntry entry) async {
-    // TODO: Implement backend sync when backend endpoints are ready
-  }
+  // /// Sync single entry to backend
+  // static Future<void> _syncEntryToBackend(CollectionEntry entry) async {
+  //   // Deprecated
+  // }
 
   /// Clear all data (for logout)
   static Future<void> clear() async {
-    _collection.clear();
+    // _collection.clear(); // Not managed here
     _usageLogs.clear();
-    _isLoaded = false;
+    _isLoaded = false; // Resets loading state for usage logs
     
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_collectionKey);
+    // await prefs.remove(_collectionKey); // Collection key not used here anymore for loading
     await prefs.remove(_usageLogsKey);
+    debugPrint("CollectionService data cleared (Usage Logs only).");
   }
 }
 

@@ -24,133 +24,133 @@ class CrystalAutoClassifier extends ChangeNotifier {
        _unifiedDataService = unifiedDataService,
        _config = config ?? EnvironmentConfig();
   
-  /// Auto-classify crystal from image and return complete metaphysical data
-  Future<CrystalClassificationResult> classifyCrystal({
-    required String imagePath,
-  }) async {
-    final isPremium = _firebaseService.currentUserProfile?.subscriptionTier != SubscriptionTier.free;
+  // /// Auto-classify crystal from image and return complete metaphysical data - DEPRECATED: Use BackendService
+  // Future<CrystalClassificationResult> classifyCrystal({
+  //   required String imagePath,
+  // }) async {
+  //   final isPremium = _firebaseService.currentUserProfile?.subscriptionTier != SubscriptionTier.free;
     
-    if (!isPremium) {
-      throw Exception('Auto-classification requires premium subscription');
-    }
+  //   if (!isPremium) {
+  //     throw Exception('Auto-classification requires premium subscription');
+  //   }
     
-    try {
-      // Get spiritual context for personalization
-      final spiritualContext = _unifiedDataService.getSpiritualContext();
+  //   try {
+  //     // Get spiritual context for personalization
+  //     final spiritualContext = _unifiedDataService.getSpiritualContext();
       
-      // Call enhanced AI for classification
-      final result = await _callClassificationAPI(imagePath, spiritualContext);
+  //     // Call enhanced AI for classification
+  //     final result = await _callClassificationAPI(imagePath, spiritualContext);
       
-      // Parse and validate JSON response
-      final classificationData = jsonDecode(result['response']);
+  //     // Parse and validate JSON response
+  //     final classificationData = jsonDecode(result['response']);
       
-      // Create Crystal object from classification
-      final crystal = _createCrystalFromClassification(classificationData);
+  //     // Create Crystal object from classification
+  //     final crystal = _createCrystalFromClassification(classificationData);
       
-      return CrystalClassificationResult(
-        crystal: crystal,
-        confidence: classificationData['identification']['confidence'].toDouble(),
-        rawClassification: classificationData,
-      );
+  //     return CrystalClassificationResult(
+  //       crystal: crystal,
+  //       confidence: classificationData['identification']['confidence'].toDouble(),
+  //       rawClassification: classificationData,
+  //     );
       
-    } catch (e) {
-      debugPrint('Crystal classification failed: $e');
-      throw Exception('Failed to classify crystal: $e');
-    }
-  }
+  //   } catch (e) {
+  //     debugPrint('Crystal classification failed: $e');
+  //     throw Exception('Failed to classify crystal: $e');
+  //   }
+  // }
   
-  /// Call Firebase Cloud Function for crystal classification
-  Future<Map<String, dynamic>> _callClassificationAPI(String imagePath, Map<String, dynamic> context) async {
-    final imageData = await _encodeImage(imagePath);
+  // /// Call Firebase Cloud Function for crystal classification - Helper for deprecated method
+  // Future<Map<String, dynamic>> _callClassificationAPI(String imagePath, Map<String, dynamic> context) async {
+  //   final imageData = await _encodeImage(imagePath);
     
-    final requestData = {
-      'image_data': imageData,
-      'user_context': context,
-      'classification_type': 'full_metaphysical',
-    };
+  //   final requestData = {
+  //     'image_data': imageData,
+  //     'user_context': context,
+  //     'classification_type': 'full_metaphysical',
+  //   };
     
-    return await _firebaseService.callEnhancedAPI('crystalAutoClassifier', requestData);
-  }
+  //   return await _firebaseService.callEnhancedAPI('crystalAutoClassifier', requestData);
+  // }
   
-  /// Create Crystal object from AI classification JSON
-  Crystal _createCrystalFromClassification(Map<String, dynamic> data) {
-    final identification = data['identification'];
-    final physical = data['physical_properties'];
-    final metaphysical = data['metaphysical_properties'];
-    final usage = data['usage_recommendations'];
-    final astro = data['astrological_alignment'];
-    final energy = data['energy_profile'];
+  // /// Create Crystal object from AI classification JSON - Helper for deprecated method
+  // Crystal _createCrystalFromClassification(Map<String, dynamic> data) {
+  //   final identification = data['identification'];
+  //   final physical = data['physical_properties'];
+  //   final metaphysical = data['metaphysical_properties'];
+  //   final usage = data['usage_recommendations'];
+  //   final astro = data['astrological_alignment'];
+  //   final energy = data['energy_profile'];
     
-    return Crystal(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: identification['name'],
-      type: identification['variety'],
-      description: _generateDescription(data),
-      properties: List<String>.from(metaphysical['healing_properties']),
-      chakras: List<String>.from(metaphysical['primary_chakras']),
-      color: physical['color'],
-      imageUrl: '', // Will be set after upload
+  //   return Crystal(
+  //     id: DateTime.now().millisecondsSinceEpoch.toString(),
+  //     name: identification['name'],
+  //     type: identification['variety'],
+  //     description: _generateDescription(data),
+  //     properties: List<String>.from(metaphysical['healing_properties']),
+  //     chakras: List<String>.from(metaphysical['primary_chakras']),
+  //     color: physical['color'],
+  //     imageUrl: '', // Will be set after upload
       
-      // Extended metaphysical properties
-      scientificName: identification['scientific_name'],
-      colorDescription: physical['color_variations'].join(', '),
-      metaphysicalProperties: List<String>.from(metaphysical['spiritual_properties']),
-      healing: List<String>.from(metaphysical['healing_properties']),
-      hardness: physical['hardness'].toDouble(),
-      keywords: List<String>.from(metaphysical['emotional_properties']),
+  //     // Extended metaphysical properties
+  //     scientificName: identification['scientific_name'],
+  //     colorDescription: physical['color_variations'].join(', '),
+  //     metaphysicalProperties: List<String>.from(metaphysical['spiritual_properties']),
+  //     healing: List<String>.from(metaphysical['healing_properties']),
+  //     hardness: physical['hardness'].toDouble(),
+  //     keywords: List<String>.from(metaphysical['emotional_properties']),
       
-      // Auto-classified properties
-      elements: List<String>.from(metaphysical['elements']),
-      planetaryRulers: List<String>.from(metaphysical['planetary_rulers']),
-      zodiacSigns: List<String>.from(metaphysical['zodiac_signs']),
-      crystalSystem: physical['crystal_system'],
-      formations: List<String>.from(physical['formations']),
+  //     // Auto-classified properties
+  //     elements: List<String>.from(metaphysical['elements']),
+  //     planetaryRulers: List<String>.from(metaphysical['planetary_rulers']),
+  //     zodiacSigns: List<String>.from(metaphysical['zodiac_signs']),
+  //     crystalSystem: physical['crystal_system'],
+  //     formations: List<String>.from(physical['formations']),
       
-      // Usage data
-      chargingMethods: List<String>.from(usage['charging_methods']),
-      cleansingMethods: List<String>.from(usage['cleansing_methods']),
-      bestCombinations: List<String>.from(usage['combinations']),
-      recommendedIntentions: List<String>.from(usage['intentions']),
+  //     // Usage data
+  //     chargingMethods: List<String>.from(usage['charging_methods']),
+  //     cleansingMethods: List<String>.from(usage['cleansing_methods']),
+  //     bestCombinations: List<String>.from(usage['combinations']),
+  //     recommendedIntentions: List<String>.from(usage['intentions']),
       
-      // Energy profile
-      vibrationFrequency: energy['vibration_frequency'],
-      energyType: energy['energy_type'],
-      bestTimeToUse: energy['best_time_to_use'],
-      effectDuration: energy['duration_of_effects'],
+  //     // Energy profile
+  //     vibrationFrequency: energy['vibration_frequency'],
+  //     energyType: energy['energy_type'],
+  //     bestTimeToUse: energy['best_time_to_use'],
+  //     effectDuration: energy['duration_of_effects'],
       
-      // Astrological data
-      birthChartAlignment: astro,
-    );
-  }
+  //     // Astrological data
+  //     birthChartAlignment: astro,
+  //   );
+  // }
   
-  /// Generate comprehensive description from classification data
-  String _generateDescription(Map<String, dynamic> data) {
-    final identification = data['identification'];
-    final physical = data['physical_properties'];
-    final metaphysical = data['metaphysical_properties'];
+  // /// Generate comprehensive description from classification data - Helper for deprecated method
+  // String _generateDescription(Map<String, dynamic> data) {
+  //   final identification = data['identification'];
+  //   final physical = data['physical_properties'];
+  //   final metaphysical = data['metaphysical_properties'];
     
-    return '''
-${identification['name']} is a ${physical['color']} ${identification['variety']} crystal with ${physical['hardness']} hardness. 
-This powerful stone resonates with the ${metaphysical['primary_chakras'].join(' and ')} chakra(s) and aligns with ${metaphysical['elements'].join(', ')} energy.
+  //   return '''
+// ${identification['name']} is a ${physical['color']} ${identification['variety']} crystal with ${physical['hardness']} hardness.
+// This powerful stone resonates with the ${metaphysical['primary_chakras'].join(' and ')} chakra(s) and aligns with ${metaphysical['elements'].join(', ')} energy.
 
-Known for its ${metaphysical['healing_properties'].take(3).join(', ')} properties, it's particularly effective for ${metaphysical['emotional_properties'].take(2).join(' and ')}.
+// Known for its ${metaphysical['healing_properties'].take(3).join(', ')} properties, it's particularly effective for ${metaphysical['emotional_properties'].take(2).join(' and ')}.
 
-Scientific composition: ${identification['scientific_name']}
-Crystal system: ${physical['crystal_system']}
-Formation: ${physical['formations'].join(', ')}
-''';
-  }
+// Scientific composition: ${identification['scientific_name']}
+// Crystal system: ${physical['crystal_system']}
+// Formation: ${physical['formations'].join(', ')}
+// ''';
+  // }
   
-  /// Encode image for API transmission
-  Future<String> _encodeImage(String imagePath) async {
-    try {
-      final file = File(imagePath);
-      final bytes = await file.readAsBytes();
-      return base64Encode(bytes);
-    } catch (e) {
-      throw Exception('Failed to encode image: $e');
-    }
-  }
+  // /// Encode image for API transmission - Helper for deprecated method
+  // Future<String> _encodeImage(String imagePath) async {
+  //   try {
+  //     final file = File(imagePath);
+  //     final bytes = await file.readAsBytes();
+  //     return base64Encode(bytes);
+  //   } catch (e) {
+  //     throw Exception('Failed to encode image: $e');
+  //   }
+  // }
   
   /// Get the system prompt for the AI classifier
   static String getClassificationPrompt(Map<String, dynamic> userContext) {
