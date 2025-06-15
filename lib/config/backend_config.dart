@@ -1,7 +1,7 @@
 class BackendConfig {
-  // Enable unified backend for production deployment
-  static const bool useBackend = true;
-  static const bool useUnifiedDataService = true;
+  // Temporarily disable unified backend to get core app working
+  static const bool useBackend = false;
+  static const bool useUnifiedDataService = false;
   
   // API Configuration
   static const String baseUrl = 'https://crystalgrimoire-production.web.app';
