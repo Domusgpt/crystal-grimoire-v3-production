@@ -54,6 +54,16 @@ const crystalsCollectionRef = db.collection('crystals');
  * @typedef {import('./models/unifiedData.js').AutomaticEnrichment} AutomaticEnrichment
  */
 
+// Health check endpoint
+v1Router.get('/health', (req, res) => {
+  console.log("Received request for /health");
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    service: "CrystalGrimoire Node.js API"
+  });
+});
+
 v1Router.post('/crystal/identify', async (req, res) => {
   console.log("Received request for /crystal/identify");
   const { image_data, user_context } = req.body;

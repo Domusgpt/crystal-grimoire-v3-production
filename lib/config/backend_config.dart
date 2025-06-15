@@ -27,10 +27,9 @@ class BackendConfig {
   // API Endpoints
   static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
   static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
-  // Old endpoints, potentially to be removed or refactored if CollectionEntry is fully deprecated
-  static const String oldCollectionEndpoint = '/crystal/collection';
-  static const String oldSaveEndpoint = '/crystal/save';
-  static const String usageEndpoint = '/usage';
+  // static const String oldCollectionEndpoint = '/crystal/collection'; // Removed
+  // static const String oldSaveEndpoint = '/crystal/save'; // Removed
+  static const String usageEndpoint = '/usage'; // Kept for now, may need review
   
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);
@@ -71,9 +70,9 @@ class BackendConfig {
       'endpoints': {
         'identify': '$baseUrl$identifyEndpoint',
         'crystals': '$baseUrl$crystalsEndpoint',
-        'old_collection': '$baseUrl$oldCollectionEndpoint',
-        'old_save': '$baseUrl$oldSaveEndpoint',
-        'usage': '$baseUrl$usageEndpoint',
+        // 'old_collection': '$baseUrl$oldCollectionEndpoint', // Removed
+        // 'old_save': '$baseUrl$oldSaveEndpoint', // Removed
+        'usage': '$baseUrl$usageEndpoint', // Kept for now
       }
     };
   }
