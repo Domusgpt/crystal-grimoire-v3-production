@@ -38,6 +38,10 @@ app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image da
 // API v1 router (optional, but good for versioning)
 const v1Router = express.Router();
 
+// Firestore instance
+const db = admin.firestore();
+const crystalsCollectionRef = db.collection('crystals');
+
 /**
  * @typedef {import('./models/unifiedData.js').UnifiedCrystalData} UnifiedCrystalData
  * @typedef {import('./models/unifiedData.js').CrystalCore} CrystalCore
@@ -171,8 +175,137 @@ Ensure all string values are properly escaped within the JSON.
   }
 });
 
+// Create a new crystal
+v1Router.post('/crystals', async (req, res) => {
+  try {
+    /** @type {import('./models/unifiedData.js').UnifiedCrystalData} */
+    const crystalData = req.body;
+
+    if (!crystalData || !crystalData.crystal_core || !crystalData.crystal_core.id) {
+      return res.status(400).json({ error: 'Invalid request: crystal_core.id is required.' });
+    }
+    if (!crystalData.user_integration || !crystalData.user_integration.user_id || crystalData.user_integration.user_id.trim() === '') {
+      return res.status(422).json({ error: 'Invalid request: user_integration.user_id is required to save to a collection.' });
+    }
+
+    const docId = crystalData.crystal_core.id;
+    await crystalsCollectionRef.doc(docId).set(crystalData);
+    console.log(`Crystal ${docId} created successfully.`);
+    res.status(201).json(crystalData);
+  } catch (error) {
+    console.error("Error creating crystal:", error);
+    res.status(500).json({ error: "Failed to create crystal." });
+  }
+});
+
+// Get a specific crystal by ID
+v1Router.get('/crystals/:crystalId', async (req, res) => {
+  try {
+    const crystalId = req.params.crystalId;
+    if (!crystalId) {
+      return res.status(400).json({ error: "Crystal ID is required." });
+    }
+    const doc = await crystalsCollectionRef.doc(crystalId).get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: "Crystal not found." });
+    }
+    console.log(`Crystal ${crystalId} fetched successfully.`);
+    res.status(200).json(doc.data());
+  } catch (error) {
+    console.error("Error getting crystal:", error);
+    res.status(500).json({ error: "Failed to get crystal." });
+  }
+});
+
+// List crystals (with optional user_id filter)
+v1Router.get('/crystals', async (req, res) => {
+  try {
+    const userId = req.query.user_id;
+    let query = crystalsCollectionRef;
+
+    if (userId) {
+      console.log(`Fetching crystals for user_id: ${userId}`);
+      query = query.where('user_integration.user_id', '==', userId);
+    } else {
+      console.log('Fetching all crystals (default limit: 30)');
+      query = query.limit(30); // Add a default limit for non-filtered queries
+    }
+
+    const snapshot = await query.get();
+    if (snapshot.empty) {
+      return res.status(200).json([]);
+    }
+    const crystals = snapshot.docs.map(doc => doc.data());
+    res.status(200).json(crystals);
+  } catch (error) {
+    console.error("Error listing crystals:", error);
+    // Check if error is due to missing index for user_id query
+    if (error.message && error.message.includes('requires an index')) {
+        return res.status(500).json({
+            error: "Query failed. A Firestore index is likely required for filtering by user_id. Please create a composite index on the 'crystals' collection for the field 'user_integration.user_id'.",
+            detail: error.message
+        });
+    }
+    res.status(500).json({ error: "Failed to list crystals." });
+  }
+});
+
+// Update a crystal
+v1Router.put('/crystals/:crystalId', async (req, res) => {
+  try {
+    const crystalId = req.params.crystalId;
+    /** @type {import('./models/unifiedData.js').UnifiedCrystalData} */
+    const crystalData = req.body;
+
+    if (!crystalData || !crystalData.crystal_core || !crystalData.crystal_core.id) {
+      return res.status(400).json({ error: 'Invalid request: crystal_core.id is required in body.' });
+    }
+    if (crystalData.crystal_core.id !== crystalId) {
+      return res.status(400).json({ error: 'Crystal ID in path does not match ID in body.' });
+    }
+
+    // Ensure user_id is present if it was part of the original logic for saving (consistency)
+    if (!crystalData.user_integration || !crystalData.user_integration.user_id || crystalData.user_integration.user_id.trim() === '') {
+      return res.status(422).json({ error: 'Invalid request: user_integration.user_id is required to update a collection crystal.' });
+    }
+
+    const docRef = crystalsCollectionRef.doc(crystalId);
+    // Using set will create if not exists, or overwrite if exists.
+    // This is fine for PUT, which implies full replacement of the resource state.
+    await docRef.set(crystalData);
+    console.log(`Crystal ${crystalId} updated successfully.`);
+    res.status(200).json(crystalData);
+  } catch (error) {
+    console.error("Error updating crystal:", error);
+    res.status(500).json({ error: "Failed to update crystal." });
+  }
+});
+
+// Delete a crystal
+v1Router.delete('/crystals/:crystalId', async (req, res) => {
+  try {
+    const crystalId = req.params.crystalId;
+
+    const docRef = crystalsCollectionRef.doc(crystalId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ error: "Crystal not found for deletion." });
+    }
+
+    await docRef.delete();
+    console.log(`Crystal ${crystalId} deleted successfully.`);
+    res.status(200).json({ message: `Crystal ${crystalId} deleted successfully.` });
+    // Or use res.status(204).send(); for No Content
+  } catch (error) {
+    console.error("Error deleting crystal:", error);
+    res.status(500).json({ error: "Failed to delete crystal." });
+  }
+});
+
+
 // Mount the v1 router under /api
-app.use('/api', v1Router); // This means endpoint will be /api/crystal/identify
+// This means endpoints will be /api/crystal/identify, /api/crystals, /api/crystals/:crystalId etc.
+app.use('/api', v1Router);
 
 // Expose Express app as a single Firebase Function called 'api'
 // This aligns with firebase.json hosting rewrite: {"source": "/api/**", "function": "api"}
