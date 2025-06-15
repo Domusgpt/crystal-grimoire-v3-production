@@ -23,7 +23,6 @@ class BackendService {
 
   // For testing purposes, allow setting a mock client after construction if needed, or use constructor.
   // Not ideal for production code but can bridge testing for now.
-  @visibleForTesting
   http.Client get httpClient => _httpClient;
 
   /// Check if user is authenticated

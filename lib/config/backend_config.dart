@@ -18,7 +18,7 @@ class BackendConfig {
   }
   
   // Use backend API if available, otherwise use direct AI
-  static const bool useBackend = false; // Disabled - backend not running
+  static const bool useBackend = true; // Enabled - unified backend integrated
   
   // Environment-based backend forcing
   static bool get forceBackendIntegration => 
