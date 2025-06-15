@@ -25,9 +25,11 @@ class BackendConfig {
     const bool.fromEnvironment('FORCE_BACKEND', defaultValue: false);
   
   // API Endpoints
-  static const String identifyEndpoint = '/crystal/identify';
-  static const String collectionEndpoint = '/crystal/collection';
-  static const String saveEndpoint = '/crystal/save';
+  static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
+  static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
+  // Old endpoints, potentially to be removed or refactored if CollectionEntry is fully deprecated
+  static const String oldCollectionEndpoint = '/crystal/collection';
+  static const String oldSaveEndpoint = '/crystal/save';
   static const String usageEndpoint = '/usage';
   
   // Timeouts
@@ -68,8 +70,9 @@ class BackendConfig {
       'force_backend': forceBackendIntegration,
       'endpoints': {
         'identify': '$baseUrl$identifyEndpoint',
-        'collection': '$baseUrl$collectionEndpoint',
-        'save': '$baseUrl$saveEndpoint',
+        'crystals': '$baseUrl$crystalsEndpoint',
+        'old_collection': '$baseUrl$oldCollectionEndpoint',
+        'old_save': '$baseUrl$oldSaveEndpoint',
         'usage': '$baseUrl$usageEndpoint',
       }
     };

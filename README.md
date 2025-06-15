@@ -28,17 +28,38 @@ cd CrystalGrimoireBeta0.2
 # Run the setup script
 cd scripts && ./quick-start.sh
 
-# Configure your API keys
-nano .env
+# Configure your API keys and Firebase settings
+# See FIREBASE_SETUP_GUIDE.md and docs/API_KEYS_CONFIGURATION.md
+# Create .env file in project root as per docs/API_KEYS_CONFIGURATION.md
+# Place firebase-service-account.json in project root as per FIREBASE_SETUP_GUIDE.md
 
-# Start the backend
-cd backend && source venv/bin/activate && python unified_backend.py
+# Setup and run the Python backend (from project root)
+./scripts/backend_setup.sh  # Run this once to set up Python environment
+./scripts/run_backend.sh    # Run this to start the backend server
 
-# Start the frontend (new terminal)
+# Start the frontend (new terminal, from project root)
 flutter run -d web-server --web-port 3000
+# Or your preferred device: flutter run
 ```
 
-## 🏗️ Architecture
+## 🏗️ Architecture Overview
+
+Crystal Grimoire uses a Flutter frontend and a Python (FastAPI) backend.
+
+### Backend Architecture
+- **Technology:** Python with FastAPI framework.
+- **Server Logic:** `backend_server.py` located in the project root.
+- **Database:** Firebase Firestore is used for data persistence. Communication is managed via the `firebase-admin` SDK.
+  - **Service Account:** Requires `firebase-service-account.json` in the project root for admin access to Firebase services. See `FIREBASE_SETUP_GUIDE.md`.
+- **API Key Management:** API keys for LLMs (Gemini, OpenAI, etc.) and other services are managed via environment variables, typically loaded from an `.env` file in the project root. See `docs/API_KEYS_CONFIGURATION.md`.
+- **Data Synchronization:** Crystal data, including user-specific collections, is handled by the backend. See `CRYSTAL_DATA_SYNC_GUIDE.md` for details on data flow and Firestore indexing.
+
+### Frontend Architecture
+- **Technology:** Flutter.
+- **Key Services:**
+    - `BackendService` (`lib/services/backend_service.dart`): Handles all HTTP communication with the Python FastAPI backend. It uses an injected `http.Client` for testability.
+    - `UnifiedDataService` (`lib/services/unified_data_service.dart`): Acts as a central service for managing application state, particularly for crystal data (which it sources from `BackendService`) and user profiles. It uses an injected `BackendService` instance.
+- **Dependency Injection:** Core services like `BackendService` and `UnifiedDataService` are designed to use dependency injection for improved testability and modularity.
 
 ### Unified Data Models
 - **UserProfile**: Central profile with birth chart and preferences
@@ -71,38 +92,85 @@ flutter run -d web-server --web-port 3000
 
 ## 🔧 Setup Requirements
 
-### 1. Firebase Setup
-```bash
-# Run the Firebase setup script
-./scripts/setup-firebase.sh
+This section provides a brief overview. For detailed instructions, please refer to the linked guides.
 
-# Enable in Firebase Console:
-- Authentication (Email, Google, Anonymous)
-- Firestore Database
-- Cloud Functions
-```
+### 1. Firebase Project and Services Setup
+- **Comprehensive Guide:** See [FIREBASE_SETUP_GUIDE.md](FIREBASE_SETUP_GUIDE.md)
+- This guide covers:
+    - Creating a Firebase project.
+    - Enabling Authentication (Email/Password, Google, Apple) for the frontend.
+    - Setting up Firestore Database and basic security rules for the backend.
+    - Generating and placing the `firebase-service-account.json` key for the Python backend (must be in the project root).
+    - Configuring FlutterFire for the frontend application.
+- The `scripts/setup-firebase.sh` script may assist with some initial Firebase CLI configurations if available and up-to-date.
 
 ### 2. Stripe Configuration
-- Create account at [dashboard.stripe.com](https://dashboard.stripe.com)
-- Add subscription products
-- Configure webhooks
-- See `docs/STRIPE_SETUP_GUIDE.md`
+- Create an account at [dashboard.stripe.com](https://dashboard.stripe.com).
+- Add your subscription products and prices.
+- Configure webhooks for payment events.
+- For more details, see [docs/STRIPE_SETUP_GUIDE.md](docs/STRIPE_SETUP_GUIDE.md).
 
-### 3. LLM API Setup
-Choose one or more providers:
-- **OpenAI**: Best quality/cost ratio
-- **Anthropic**: Premium experience
-- **Google Gemini**: Budget option
-- See `docs/LLM_API_SETUP_GUIDE.md`
+### 3. LLM and Other Backend API Keys
+- The Python backend requires API keys for Large Language Models (LLMs) and potentially other services.
+- **Comprehensive Guide:** See [docs/API_KEYS_CONFIGURATION.md](docs/API_KEYS_CONFIGURATION.md)
+- This guide covers:
+    - Which API keys are needed (e.g., `GEMINI_API_KEY`, `OPENAI_API_KEY`, `CLAUDE_API_KEY`, `PARSERATOR_API_KEY`).
+    - How to obtain these keys.
+    - How to set them up using an `.env` file in the project root for the Python backend.
+- For specific LLM provider setup, you can also refer to [docs/LLM_API_SETUP_GUIDE.md](docs/LLM_API_SETUP_GUIDE.md).
 
-### 4. Environment Variables
-Copy `.env.template` to `.env` and add your keys:
-```env
-FIREBASE_API_KEY=your_key
-STRIPE_SECRET_KEY=sk_test_...
-OPENAI_API_KEY=sk-...
-# ... etc
-```
+### 4. Backend Environment Variables (`.env` file)
+- The Python backend (`backend_server.py`) loads required API keys and configuration (like `PORT`, `ENVIRONMENT`) from an `.env` file located in the project root.
+- Ensure this `.env` file is created by copying `.env.template` (if available and relevant for backend) or by following the template in [docs/API_KEYS_CONFIGURATION.md](docs/API_KEYS_CONFIGURATION.md).
+- Example content for `.env`:
+  ```env
+  # LLM Keys
+  GEMINI_API_KEY=your_gemini_key
+  OPENAI_API_KEY=sk-your_openai_key
+  # ... other keys as per docs/API_KEYS_CONFIGURATION.md
+
+  # Backend settings
+  PORT=8081
+  ENVIRONMENT=development
+  ```
+- **Important:** Add your `.env` file and `firebase-service-account.json` to your `.gitignore` to prevent committing sensitive credentials.
+
+### 5. Running the Python Backend Server
+Once Firebase and API keys are configured:
+
+1.  **Set up the Python environment (first time):**
+    ```bash
+    ./scripts/backend_setup.sh
+    ```
+    This script will:
+    *   Check for Python 3.8+ and pip.
+    *   Create a virtual environment named `.venv` in the project root.
+    *   Install required Python dependencies from `requirements.txt`.
+    *   Provide instructions to manually activate the virtual environment for subsequent sessions.
+
+2.  **Run the backend server:**
+    ```bash
+    ./scripts/run_backend.sh
+    ```
+    This script will:
+    *   Activate the `.venv` virtual environment.
+    *   Start the FastAPI backend server using Uvicorn.
+    *   Load environment variables from the `.env` file in the project root.
+    *   Enable auto-reload, so changes to `backend_server.py` will restart the server.
+    *   The server will typically be available at `http://localhost:8081` (or the `PORT` specified in your `.env` file).
+
+    **Manual Activation (Alternative to `run_backend.sh` for subsequent runs):**
+    If you prefer to run the server manually after the initial setup:
+    ```bash
+    # Activate the virtual environment (from project root)
+    source .venv/bin/activate
+
+    # Run uvicorn (from project root)
+    uvicorn backend_server:app --reload --env-file .env
+
+    # Deactivate when done
+    deactivate
+    ```
 
 ## 📱 Key Features
 
@@ -155,11 +223,12 @@ CrystalGrimoireBeta0.2/
 │   ├── services/          # API and business logic
 │   ├── screens/           # UI screens
 │   └── widgets/           # Reusable components
-├── backend/               # Python FastAPI backend
-│   ├── unified_backend.py # Main API server
-│   └── requirements.txt   # Python dependencies
-├── scripts/               # Setup and deployment
-├── docs/                  # Documentation
+# No separate backend/ directory for the main Python server code and requirements
+├── backend_server.py      # Main Python FastAPI server
+├── requirements.txt       # Python dependencies for the backend
+├── tests/                 # Backend tests (pytest)
+├── scripts/               # Setup, deployment, and utility scripts
+├── docs/                  # Project documentation guides
 └── web/                   # Web deployment files
 ```
 
@@ -168,12 +237,14 @@ CrystalGrimoireBeta0.2/
 # Flutter tests
 flutter test
 
-# Backend tests
-cd backend && pytest
+# Backend tests (run from project root)
+# Ensure FIRESTORE_EMULATOR_HOST is set for integration tests, see FIREBASE_SETUP_GUIDE.md
+pytest tests/
 
-# Integration tests
+# Integration tests (Flutter)
 flutter drive --target=test_driver/app.dart
 ```
+For detailed instructions on setting up the Firebase Emulator for backend integration testing, refer to the "Using Firebase Emulators" section in `FIREBASE_SETUP_GUIDE.md`.
 
 ## 🚀 Deployment
 

@@ -34,53 +34,53 @@ class FirebaseAIService {
     }
   }
 
-  /// Identify crystal from image bytes
-  static Future<Map<String, dynamic>> identifyCrystal({
-    required Uint8List imageBytes,
-    String? userQuery,
-    Map<String, dynamic>? userContext,
-  }) async {
-    if (!_initialized) await initialize();
+  // /// Identify crystal from image bytes - DEPRECATED: Use BackendService.identifyCrystal via AIService/UnifiedAIService
+  // static Future<Map<String, dynamic>> identifyCrystal({
+  //   required Uint8List imageBytes,
+  //   String? userQuery,
+  //   Map<String, dynamic>? userContext,
+  // }) async {
+  //   if (!_initialized) await initialize();
 
-    try {
-      // Build personalized prompt
-      final prompt = _buildPersonalizedPrompt(userQuery, userContext);
+  //   try {
+  //     // Build personalized prompt
+  //     final prompt = _buildPersonalizedPrompt(userQuery, userContext);
       
-      // Create multimodal content (text + image)
-      final content = [
-        Content.multi([
-          TextPart(prompt),
-          InlineDataPart('image/jpeg', imageBytes),
-        ])
-      ];
+  //     // Create multimodal content (text + image)
+  //     final content = [
+  //       Content.multi([
+  //         TextPart(prompt),
+  //         InlineDataPart('image/jpeg', imageBytes),
+  //       ])
+  //     ];
 
-      // Generate response using Firebase AI Logic
-      final response = await _model.generateContent(content);
+  //     // Generate response using Firebase AI Logic
+  //     final response = await _model.generateContent(content);
       
-      if (response.text == null || response.text!.isEmpty) {
-        throw Exception('No response from AI model');
-      }
+  //     if (response.text == null || response.text!.isEmpty) {
+  //       throw Exception('No response from AI model');
+  //     }
 
-      // Parse JSON response
-      final result = _parseAIResponse(response.text!);
+  //     // Parse JSON response
+  //     final result = _parseAIResponse(response.text!);
       
-      // Add metadata
-      result['processed_at'] = DateTime.now().toIso8601String();
-      result['model_used'] = 'gemini-2.0-flash';
-      result['firebase_ai_logic'] = true;
+  //     // Add metadata
+  //     result['processed_at'] = DateTime.now().toIso8601String();
+  //     result['model_used'] = 'gemini-2.0-flash';
+  //     result['firebase_ai_logic'] = true;
       
-      return result;
+  //     return result;
       
-    } catch (e) {
-      print('❌ Crystal identification failed: $e');
-      return {
-        'error': e.toString(),
-        'fallback_name': 'Unknown Crystal',
-        'confidence': 0,
-        'processed_at': DateTime.now().toIso8601String(),
-      };
-    }
-  }
+  //   } catch (e) {
+  //     print('❌ Crystal identification failed: $e');
+  //     return {
+  //       'error': e.toString(),
+  //       'fallback_name': 'Unknown Crystal',
+  //       'confidence': 0,
+  //       'processed_at': DateTime.now().toIso8601String(),
+  //     };
+  //   }
+  // }
 
   /// Generate spiritual guidance using user's context
   static Future<String> generateSpritualGuidance({
