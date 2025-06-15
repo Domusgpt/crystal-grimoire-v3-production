@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import '../models/user_profile.dart';
-import '../models/crystal_collection.dart';
+import '../models/crystal_collection.dart'; // Uses CollectionEntry with UnifiedCrystalData
+import '../models/unified_crystal_data.dart'; // For direct type access if needed
+
+// import 'dart:convert'; // Example: if it was here and unused, remove
 
 /// Unified LLM Context Builder - Creates comprehensive user context for all LLM queries
 /// Ensures every AI interaction includes user's birth chart, crystal collection, and personalization data
@@ -28,33 +31,43 @@ class UnifiedLLMContextBuilder {
       final context = {
         'user_profile': {
           'birth_chart': {
-            'sun_sign': userProfile.birthChart?.sunSign.name ?? 'Unknown',
-            'moon_sign': userProfile.birthChart?.moonSign.name ?? 'Unknown', 
-            'rising_sign': userProfile.birthChart?.ascendant.name ?? 'Unknown',
+            'sun_sign': userProfile.birthChart?.sunSign?.name ?? 'Unknown', // Added null check for sunSign itself
+            'moon_sign': userProfile.birthChart?.moonSign?.name ?? 'Unknown', // Added null check for moonSign itself
+            'rising_sign': userProfile.birthChart?.ascendant?.name ?? 'Unknown', // ascendant is correct
             'birth_date': userProfile.birthDate?.toIso8601String(),
             'birth_time': userProfile.birthTime,
             'birth_location': userProfile.birthLocation,
             'spiritual_context': spiritualContext,
           },
           'spiritual_preferences': {
-            'goals': userProfile.spiritualPreferences['goals'] ?? ['healing', 'growth', 'protection'],
-            'experience_level': userProfile.spiritualPreferences['experience_level'] ?? 'intermediate',
-            'preferred_practices': userProfile.spiritualPreferences['preferred_practices'] ?? ['meditation', 'crystal_healing'],
-            'intentions': userProfile.spiritualPreferences['intentions'] ?? [],
+            // Accessing map keys with null safety and default values
+            'goals': (userProfile.spiritualPreferences?['goals'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['healing', 'growth', 'protection'],
+            'experience_level': userProfile.spiritualPreferences?['experience_level']?.toString() ?? 'intermediate',
+            'preferred_practices': (userProfile.spiritualPreferences?['preferred_practices'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? ['meditation', 'crystal_healing'],
+            'challenges': userProfile.spiritualPreferences?['challenges']?.toString() ?? 'general guidance', // As per LLM_INTEGRATION_FIXES_NEEDED.md
+            'preferred_tools': (userProfile.spiritualPreferences?['preferred_tools'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [], // As per LLM_INTEGRATION_FIXES_NEEDED.md
+            'intentions': (userProfile.spiritualPreferences?['intentions'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
           },
           'subscription_tier': userProfile.subscriptionTier.displayName,
         },
         'crystal_collection': {
           'total_crystals': crystalCollection.length,
-          'collection_details': crystalCollection.map((entry) => {
-            'name': entry.crystal.name,
-            'type': entry.crystal.type,
-            'acquisition_date': entry.dateAdded.toIso8601String(),
-            'personal_notes': entry.notes ?? '',
-            'intentions': entry.primaryUses,
-            'usage_count': entry.usageCount,
-            'last_used': 'Unknown', // CollectionEntry doesn't have lastUsed
-            'metaphysical_properties': entry.crystal.metaphysicalProperties,
+          'collection_details': crystalCollection.map((entry) {
+            final core = entry.crystalData.crystalCore;
+            final enrichment = entry.crystalData.automaticEnrichment;
+            return {
+              'name': core.identification.stoneType,
+              'type': core.identification.crystalFamily, // Or core.identification.variety
+              'acquisition_date': entry.dateAdded.toIso8601String(), // From CollectionEntry
+              'personal_notes': entry.notes ?? '', // From CollectionEntry
+              'intentions': entry.primaryUses, // From CollectionEntry
+              'usage_count': entry.usageCount, // From CollectionEntry
+              'last_used': 'Unknown', // Still unknown from CollectionEntry
+              'metaphysical_properties': enrichment?.healingProperties ?? [], // Example from UnifiedCrystalData
+              // Add more from UnifiedCrystalData as needed for context, e.g.,
+              'primary_chakra': core.energyMapping.primaryChakra,
+              'colors': [core.visualAnalysis.primaryColor, ...core.visualAnalysis.secondaryColors],
+            };
           }).toList(),
           'statistics': collectionStats,
           'favorite_crystals': _getFavoriteCrystals(crystalCollection),
@@ -198,24 +211,27 @@ class UnifiedLLMContextBuilder {
     if (birthChart == null) return {};
     
     return {
-      'sun_element': birthChart.sunSign.element,
-      'moon_element': birthChart.moonSign.element,
-      'dominant_element': birthChart.sunSign.element, // Simplified
-      'compatible_crystals': birthChart.sunSign.compatibleCrystals,
+      'sun_element': birthChart.sunSign?.element?.name ?? 'Unknown', // Null safety for element and its name
+      'moon_element': birthChart.moonSign?.element?.name ?? 'Unknown',
+      'dominant_element': birthChart.sunSign?.element?.name ?? 'Unknown', // Simplified, ensure null safety
+      'compatible_crystals': birthChart.sunSign?.compatibleCrystals ?? [], // Default to empty list
+      // Add rising sign details if available and relevant
+      'rising_element': birthChart.ascendant?.element?.name ?? 'Unknown',
+      'rising_compatible_crystals': birthChart.ascendant?.compatibleCrystals ?? [],
     };
   }
 
   /// Build collection statistics for analysis
   Map<String, dynamic> _buildCollectionStats(List<CollectionEntry> collection) {
-    if (collection.isEmpty) return {'total': 0};
+    if (collection.isEmpty) return {'total': 0, 'type_distribution': <String, int>{}};
     
     final totalUsage = collection.fold<int>(0, (sum, entry) => sum + entry.usageCount);
     final averageUsage = totalUsage / collection.length;
     
-    // Group by crystal type
+    // Group by crystal type (crystalFamily or variety from UnifiedCrystalData)
     final typeDistribution = <String, int>{};
     for (final entry in collection) {
-      final type = entry.crystal.type;
+      final type = entry.crystalData.crystalCore.identification.crystalFamily; // Or .variety
       typeDistribution[type] = (typeDistribution[type] ?? 0) + 1;
     }
     
@@ -231,13 +247,18 @@ class UnifiedLLMContextBuilder {
   /// Get favorite crystals based on usage
   List<Map<String, dynamic>> _getFavoriteCrystals(List<CollectionEntry> collection) {
     final sorted = List<CollectionEntry>.from(collection)
-      ..sort((a, b) => b.usageCount.compareTo(a.usageCount));
+      ..sort((a, b) => b.usageCount.compareTo(a.usageCount)); // Assumes isFavorite is primary, then usage
+      // To truly get favorites, it should be based on entry.isFavorite
+      // For now, using usageCount as a proxy if isFavorite isn't the sole determinant.
     
-    return sorted.take(3).map((entry) => {
-      'name': entry.crystal.name,
-      'usage_count': entry.usageCount,
-      'intentions': entry.primaryUses,
-    }).toList();
+    return sorted
+        .where((entry) => entry.isFavorite) // Prioritize actual favorites
+        .take(5) // Take top 5 favorites
+        .map((entry) => {
+          'name': entry.crystalData.crystalCore.identification.stoneType,
+          'usage_count': entry.usageCount,
+          'intentions': entry.primaryUses,
+        }).toList();
   }
 
   /// Get recent acquisitions (last 30 days)
@@ -246,13 +267,11 @@ class UnifiedLLMContextBuilder {
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
     
     return collection
-      .where((entry) {
-        return entry.dateAdded.isAfter(thirtyDaysAgo);
-      })
+      .where((entry) => entry.dateAdded.isAfter(thirtyDaysAgo))
       .map((entry) => {
-        'name': entry.crystal.name,
+        'name': entry.crystalData.crystalCore.identification.stoneType,
         'acquisition_date': entry.dateAdded.toIso8601String(),
-        'intentions': entry.primaryUses,
+        'intentions': entry.primaryUses, // These are from CollectionEntry itself
       })
       .toList();
   }
@@ -263,7 +282,7 @@ class UnifiedLLMContextBuilder {
       ..sort((a, b) => b.usageCount.compareTo(a.usageCount));
     
     return sorted.take(5).map((entry) => {
-      'name': entry.crystal.name,
+      'name': entry.crystalData.crystalCore.identification.stoneType,
       'usage_count': entry.usageCount,
       'last_used': 'Unknown', // No lastUsed property in CollectionEntry
     }).toList();
@@ -284,9 +303,9 @@ class UnifiedLLMContextBuilder {
     // Add specific birth chart guidance
     final birthChart = userProfile.birthChart;
     if (birthChart != null) {
-      instructions.writeln('7. For ${birthChart.sunSign.name} Sun: Focus on core identity and self-expression themes');
-      instructions.writeln('8. For ${birthChart.moonSign.name} Moon: Address emotional and intuitive aspects');
-      instructions.writeln('9. For ${birthChart.ascendant.name} Rising: Consider their outward approach and first impressions');
+      instructions.writeln('7. For ${birthChart.sunSign?.name ?? "their"} Sun: Focus on core identity and self-expression themes');
+      instructions.writeln('8. For ${birthChart.moonSign?.name ?? "their"} Moon: Address emotional and intuitive aspects');
+      instructions.writeln('9. For ${birthChart.ascendant?.name ?? "their"} Rising: Consider their outward approach and first impressions');
     }
     
     return instructions.toString();
@@ -304,11 +323,11 @@ class UnifiedLLMContextBuilder {
 
   /// Build crystal recommendation filter
   Map<String, dynamic> _buildCrystalFilter(List<CollectionEntry> collection) {
-    final ownedCrystals = collection.map((entry) => entry.crystal.name.toLowerCase()).toSet();
+    final ownedCrystalNames = collection.map((entry) => entry.crystalData.crystalCore.identification.stoneType.toLowerCase()).toSet();
     
     return {
-      'owned_crystals': collection.map((entry) => entry.crystal.name).toList(),
-      'available_for_recommendations': ownedCrystals.toList(),
+      'owned_crystals': ownedCrystalNames.toList(), // Send names for easier AI processing
+      'available_for_recommendations': ownedCrystalNames.toList(), // Same as above for this context
       'recommendation_strategy': 'prioritize_owned_crystals',
       'suggest_new_crystals': 'only_if_needed_for_specific_goals',
     };
@@ -316,7 +335,7 @@ class UnifiedLLMContextBuilder {
 
   /// Get communication style based on user profile
   String _getCommunicationStyle(UserProfile userProfile) {
-    final experienceLevel = userProfile.spiritualPreferences['experience_level'] ?? 'intermediate';
+    final experienceLevel = userProfile.spiritualPreferences?['experience_level']?.toString() ?? 'intermediate';
     
     switch (experienceLevel) {
       case 'beginner':
@@ -333,17 +352,20 @@ class UnifiedLLMContextBuilder {
     double score = 0.0;
     
     // Birth chart completeness
-    if (userProfile.birthChart != null) score += 0.3;
-    if (userProfile.birthDate != null) score += 0.1;
-    if (userProfile.birthLocation != null) score += 0.1;
+    if (userProfile.birthChart?.sunSign?.name != null && userProfile.birthChart!.sunSign!.name.isNotEmpty) score += 0.15;
+    if (userProfile.birthChart?.moonSign?.name != null && userProfile.birthChart!.moonSign!.name.isNotEmpty) score += 0.15;
+    if (userProfile.birthChart?.ascendant?.name != null && userProfile.birthChart!.ascendant!.name.isNotEmpty) score += 0.1; // Ascendant is part of birth chart
+    if (userProfile.birthDate != null) score += 0.05; // Reduced weight as signs are more important
+    if (userProfile.birthLocation != null && userProfile.birthLocation!.isNotEmpty) score += 0.05;
     
     // Collection richness
-    if (collection.isNotEmpty) score += 0.2;
+    if (collection.isNotEmpty) score += 0.1;
     if (collection.length >= 5) score += 0.1;
     if (collection.any((c) => c.usageCount > 0)) score += 0.1;
     
-    // Profile completeness
-    if (userProfile.spiritualPreferences['goals'] != null) score += 0.1;
+    // Profile completeness (spiritual preferences)
+    if (userProfile.spiritualPreferences != null && userProfile.spiritualPreferences!.containsKey('goals') && (userProfile.spiritualPreferences!['goals'] as List).isNotEmpty) score += 0.1;
+    if (userProfile.spiritualPreferences != null && userProfile.spiritualPreferences!.containsKey('experience_level') && (userProfile.spiritualPreferences!['experience_level'] as String).isNotEmpty) score += 0.1;
     
     return score.clamp(0.0, 1.0);
   }
@@ -374,14 +396,14 @@ class UnifiedLLMContextBuilder {
     return {
       'user_profile': {
         'birth_chart': {
-          'sun_sign': userProfile.birthChart?.sunSign.name ?? 'Unknown',
-          'moon_sign': userProfile.birthChart?.moonSign.name ?? 'Unknown',
+            'sun_sign': userProfile.birthChart?.sunSign?.name ?? 'Unknown',
+            'moon_sign': userProfile.birthChart?.moonSign?.name ?? 'Unknown',
         },
         'subscription_tier': userProfile.subscriptionTier.displayName,
       },
       'crystal_collection': {
         'total_crystals': collection.length,
-        'crystal_names': collection.map((entry) => entry.crystal.name).take(5).toList(),
+          'crystal_names': collection.map((entry) => entry.crystalData.crystalCore.identification.stoneType).take(5).toList(),
       },
       'current_context': {
         'query': query,
