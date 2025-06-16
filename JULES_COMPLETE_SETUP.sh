@@ -53,9 +53,9 @@ Default GCP Resource Location: us-central1
 Web App Configuration:
 {
   apiKey: "AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c",
-  authDomain: "crystalgrimoire-production.firebaseapp.com",
-  projectId: "crystalgrimoire-production",
-  storageBucket: "crystalgrimoire-production.appspot.com",
+  authDomain: "crystalgrimoire-v3-production.firebaseapp.com",
+  projectId: "crystalgrimoire-v3-production",
+  storageBucket: "crystalgrimoire-v3-production.appspot.com",
   messagingSenderId: "1077070194300",
   appId: "1:1077070194300:web:eb4fc5b69fb9c51c96f5eb",
   measurementId: "G-B2QJY94ZQ9"
@@ -72,8 +72,8 @@ cat > .env << 'EOF'
 # Firebase Configuration
 FIREBASE_PROJECT_ID=crystalgrimoire-v3-production
 FIREBASE_API_KEY=AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c
-FIREBASE_AUTH_DOMAIN=crystalgrimoire-production.firebaseapp.com
-FIREBASE_STORAGE_BUCKET=crystalgrimoire-production.appspot.com
+FIREBASE_AUTH_DOMAIN=crystalgrimoire-v3-production.firebaseapp.com
+FIREBASE_STORAGE_BUCKET=crystalgrimoire-v3-production.appspot.com
 FIREBASE_MESSAGING_SENDER_ID=1077070194300
 FIREBASE_APP_ID=1:1077070194300:web:eb4fc5b69fb9c51c96f5eb
 
@@ -112,7 +112,7 @@ echo "Deploying to Firebase Hosting..."
 firebase deploy --only hosting
 
 echo "✅ Deployment complete!"
-echo "🌐 Frontend: https://crystalgrimoire-production.web.app"
+echo "🌐 Frontend: https://crystalgrimoire-v3-production.web.app"
 echo "🔥 Backend API: https://us-central1-crystalgrimoire-v3-production.cloudfunctions.net/api/health"
 EOF
 
