@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
+import '../models/user_profile.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 class SoundBathScreen extends StatefulWidget {
   const SoundBathScreen({Key? key}) : super(key: key);
@@ -19,46 +22,75 @@ class _SoundBathScreenState extends State<SoundBathScreen>
   late Animation<double> _breathingAnimation;
   late Animation<double> _glowAnimation;
   
-  bool isPlaying = false;
+  // Audio Player State
+  late AudioPlayer _audioPlayer;
+  PlayerState? _playerState;
+  Duration? _duration;
+  Duration? _position;
+
+  bool isPlaying = false; // Retained for UI elements, but driven by _playerState
   String selectedSound = 'Crystal Bowl';
   int selectedDuration = 10; // minutes
   
+  // Placeholder asset path
+  static const String _defaultAudioPath = 'audio/sound_bath/default_sound.mp3';
+
   final Map<String, Map<String, dynamic>> soundData = {
     'Crystal Bowl': {
       'frequency': '432 Hz',
       'description': 'Pure crystal vibrations for deep healing',
       'color': const Color(0xFF9333EA),
       'icon': Icons.album,
+      'assetPath': _defaultAudioPath,
     },
     'Tibetan Bowl': {
       'frequency': '528 Hz',
       'description': 'Ancient healing frequencies',
       'color': const Color(0xFFD97706),
       'icon': Icons.circle,
+      'assetPath': _defaultAudioPath,
     },
     'Ocean Waves': {
       'frequency': 'Natural',
       'description': 'Calming rhythm of the sea',
       'color': const Color(0xFF0EA5E9),
       'icon': Icons.waves,
+      'assetPath': _defaultAudioPath,
     },
     'Rain Forest': {
       'frequency': 'Natural',
       'description': 'Immersive nature sounds',
       'color': const Color(0xFF10B981),
       'icon': Icons.forest,
+      'assetPath': _defaultAudioPath,
     },
     'Chakra Tones': {
       'frequency': '396-963 Hz',
       'description': 'Full chakra alignment sequence',
       'color': const Color(0xFFEC4899),
       'icon': Icons.blur_circular,
+      'assetPath': _defaultAudioPath,
     },
   };
 
   @override
   void initState() {
     super.initState();
+    _audioPlayer = AudioPlayer();
+    _audioPlayer.onPlayerStateChanged.listen((PlayerState s) {
+      if(mounted) {
+        setState(() {
+          _playerState = s;
+          isPlaying = (s == PlayerState.playing);
+        });
+      }
+    });
+    _audioPlayer.onDurationChanged.listen((Duration d) {
+      if(mounted) setState(() => _duration = d);
+    });
+    _audioPlayer.onPositionChanged.listen((Duration p) {
+      if(mounted) setState(() => _position = p);
+    });
     
     _waveController = AnimationController(
       duration: const Duration(seconds: 6),
@@ -105,11 +137,65 @@ class _SoundBathScreenState extends State<SoundBathScreen>
     _waveController.dispose();
     _breathingController.dispose();
     _glowController.dispose();
+    _audioPlayer.dispose(); // Dispose audio player
     super.dispose();
+  }
+
+  String _formatDuration(Duration? d) {
+    if (d == null) return "--:--";
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
   }
 
   @override
   Widget build(BuildContext context) {
+    final userProfile = Provider.of<UserProfile>(context);
+
+    if (!userProfile.hasAccessTo('sound_bath')) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Sound Bath',
+            style: GoogleFonts.cinzel(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1A0B2E), // Consistent dark theme
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF0A0015),
+                Color(0xFF1A0B2E),
+                Color(0xFF2D1B69),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                'Sound Bath is a Pro feature. Please upgrade to immerse yourself in healing frequencies.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  color: Colors.white.withOpacity(0.8),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -143,7 +229,7 @@ class _SoundBathScreenState extends State<SoundBathScreen>
           ),
           
           // Animated waves
-          if (isPlaying)
+          if (_playerState == PlayerState.playing) // Conditional rendering based on player state
             AnimatedBuilder(
               animation: _waveAnimation,
               builder: (context, child) {
@@ -176,11 +262,16 @@ class _SoundBathScreenState extends State<SoundBathScreen>
                   
                   // Duration selector
                   _buildDurationSelector(),
+
+                  const SizedBox(height: 16), // Adjusted spacing
+
+                  // Slider and Duration Text
+                  if (_duration != null) _buildPlaybackSlider(),
                   
                   const SizedBox(height: 24),
                   
                   // Breathing guide
-                  if (isPlaying) _buildBreathingGuide(),
+                  if (_playerState == PlayerState.playing) _buildBreathingGuide(), // Conditional rendering
                   
                   const SizedBox(height: 32),
                   
@@ -311,10 +402,17 @@ class _SoundBathScreenState extends State<SoundBathScreen>
               final isSelected = sound == selectedSound;
               
               return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    selectedSound = sound;
-                  });
+                onTap: () async {
+                  if (selectedSound != sound) {
+                    if (_playerState == PlayerState.playing) {
+                      await _audioPlayer.stop();
+                    }
+                    setState(() {
+                      selectedSound = sound;
+                      _position = Duration.zero; // Reset position for new sound
+                      // _duration = null; // Optionally reset duration until new sound loads
+                    });
+                  }
                 },
                 child: Container(
                   width: 140,
@@ -502,9 +600,9 @@ class _SoundBathScreenState extends State<SoundBathScreen>
               ),
               const SizedBox(width: 12),
               Text(
-                _breathingAnimation.value > 1.0 ? 'Breathe In' : 'Breathe Out',
+            text: _breathingAnimation.value > 1.0 ? 'Breathe In' : 'Breathe Out', // This logic seems fine
                 style: GoogleFonts.poppins(
-                  fontSize: 16,
+              fontSize: 16, // Keep existing style
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
@@ -543,10 +641,14 @@ class _SoundBathScreenState extends State<SoundBathScreen>
         
         // Play/Pause button
         GestureDetector(
-          onTap: () {
-            setState(() {
-              isPlaying = !isPlaying;
-            });
+          onTap: () async {
+            final currentAssetPath = soundData[selectedSound]!['assetPath'] as String;
+            if (_playerState == PlayerState.playing) {
+              await _audioPlayer.pause();
+            } else {
+              await _audioPlayer.play(AssetSource(currentAssetPath));
+            }
+            // isPlaying state is updated by the onPlayerStateChanged listener
           },
           child: Container(
             width: 80,
@@ -569,7 +671,7 @@ class _SoundBathScreenState extends State<SoundBathScreen>
               ],
             ),
             child: Icon(
-              isPlaying ? Icons.pause : Icons.play_arrow,
+              _playerState == PlayerState.playing ? Icons.pause : Icons.play_arrow,
               color: Colors.white,
               size: 40,
             ),
@@ -578,7 +680,7 @@ class _SoundBathScreenState extends State<SoundBathScreen>
         
         const SizedBox(width: 20),
         
-        // Next button
+        // Next button - Placeholder, actual logic might involve a playlist or sequence
         Container(
           width: 56,
           height: 56,
@@ -633,4 +735,40 @@ class WavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
+
+// Widget for Playback Slider and Duration Text
+Widget _buildPlaybackSlider() {
+  final color = soundData[selectedSound]!['color'] as Color;
+  return Column(
+    children: [
+      Slider(
+        value: (_position?.inMilliseconds ?? 0).toDouble().clamp(0.0, (_duration?.inMilliseconds ?? 1.0).toDouble()),
+        min: 0.0,
+        max: (_duration?.inMilliseconds ?? 1.0).toDouble() > 0 ? (_duration!.inMilliseconds.toDouble()) : 1.0, // Ensure max is not 0
+        onChanged: (value) {
+          final position = Duration(milliseconds: value.round());
+          _audioPlayer.seek(position);
+        },
+        activeColor: color,
+        inactiveColor: color.withOpacity(0.3),
+      ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              _formatDuration(_position ?? Duration.zero),
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+            ),
+            Text(
+              _formatDuration(_duration ?? Duration.zero),
+              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
 }

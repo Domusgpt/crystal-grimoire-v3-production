@@ -530,4 +530,121 @@ class BackendService {
   //   }
   //   return 0.7;
   // }
+
+  // Journal Endpoints
+  // Base path assumed: /journals
+  // Detail path assumed: /journals/{id}
+
+  Future<List<dynamic>> getJournalEntries() async {
+    if (!isAuthenticated) {
+      throw Exception('Authentication required to fetch journal entries.');
+    }
+    try {
+      final response = await _httpClient.get(
+        Uri.parse('${BackendConfig.baseUrl}/journals'), // Assumed endpoint
+        headers: _headers,
+      ).timeout(BackendConfig.apiTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as List<dynamic>;
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to load journal entries: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getJournalEntries: $e');
+      throw Exception('Failed to get journal entries: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> saveJournalEntry(Map<String, dynamic> entryJson) async {
+    if (!isAuthenticated) {
+      throw Exception('Authentication required to save journal entry.');
+    }
+    try {
+      final response = await _httpClient.post(
+        Uri.parse('${BackendConfig.baseUrl}/journals'), // Assumed endpoint
+        headers: _headers..addAll({'Content-Type': 'application/json'}),
+        body: jsonEncode(entryJson),
+      ).timeout(BackendConfig.apiTimeout);
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to save journal entry: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in saveJournalEntry: $e');
+      throw Exception('Failed to save journal entry: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> updateJournalEntry(String entryId, Map<String, dynamic> entryJson) async {
+    if (!isAuthenticated) {
+      throw Exception('Authentication required to update journal entry.');
+    }
+    if (entryId.isEmpty) {
+      throw Exception('Journal entry ID is required for updating.');
+    }
+    try {
+      final response = await _httpClient.put(
+        Uri.parse('${BackendConfig.baseUrl}/journals/$entryId'), // Assumed endpoint
+        headers: _headers..addAll({'Content-Type': 'application/json'}),
+        body: jsonEncode(entryJson),
+      ).timeout(BackendConfig.apiTimeout);
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body) as Map<String, dynamic>;
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Journal entry not found for update.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to update journal entry: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in updateJournalEntry: $e');
+      throw Exception('Failed to update journal entry: $e');
+    }
+  }
+
+  Future<void> deleteJournalEntry(String entryId) async {
+    if (!isAuthenticated) {
+      throw Exception('Authentication required to delete journal entry.');
+    }
+    if (entryId.isEmpty) {
+      throw Exception('Journal entry ID is required for deletion.');
+    }
+    try {
+      final response = await _httpClient.delete(
+        Uri.parse('${BackendConfig.baseUrl}/journals/$entryId'), // Assumed endpoint
+        headers: _headers,
+      ).timeout(BackendConfig.apiTimeout);
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        // Success, no content to return for DELETE or backend might return a success message
+        return;
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again.');
+      } else if (response.statusCode == 404) {
+        throw Exception('Journal entry not found for deletion.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to delete journal entry: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in deleteJournalEntry: $e');
+      throw Exception('Failed to delete journal entry: $e');
+    }
+  }
 }

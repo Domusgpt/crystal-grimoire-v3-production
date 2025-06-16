@@ -287,4 +287,47 @@ class AstrologyService {
     // Default to GMT/London if not found
     return {'lat': 51.5074, 'lon': -0.1278};
   }
+
+  // Method to get current moon phase
+  Future<String> getCurrentMoonPhase() async {
+    // Simple calculation as provided in the prompt.
+    // In a real app, consider using a more accurate library or API.
+    await Future.delayed(const Duration(milliseconds: 10)); // Simulate minor async work
+
+    final now = DateTime.now();
+    // Using a known New Moon: January 21, 2023, 20:53 UTC
+    // Or a more recent one if readily available, e.g., Jan 11, 2024, 11:57 UTC
+    // For simplicity, this calculation is approximate and doesn't account for timezones perfectly.
+    // A common synodic period is 29.530588853 days.
+    final newMoon2024 = DateTime.utc(2024, 1, 11, 11, 57);
+    final cycleLength = 29.530588853;
+
+    final difference = now.difference(newMoon2024);
+    final daysSinceNewMoon = (difference.inSeconds / (60 * 60 * 24)) % cycleLength;
+
+    // Ensure daysSinceNewMoon is positive if 'now' is before the reference newMoon
+    final double currentPhaseDays = daysSinceNewMoon < 0 ? daysSinceNewMoon + cycleLength : daysSinceNewMoon;
+
+    // Approximate phase boundaries (each phase is roughly 29.53 / 8 = 3.69 days)
+    // More precise boundaries:
+    // New Moon: 0 to <1.84566 (or >27.68 to 29.53)
+    // Waxing Crescent: 1.84566 to <5.53699
+    // First Quarter: 5.53699 to <9.22831
+    // Waxing Gibbous: 9.22831 to <12.91963
+    // Full Moon: 12.91963 to <16.61096
+    // Waning Gibbous: 16.61096 to <20.30228
+    // Last Quarter: 20.30228 to <23.99361
+    // Waning Crescent: 23.99361 to <27.68493
+    // Back to New Moon: 27.68493 to 29.53...
+
+    if (currentPhaseDays < 1.84566 || currentPhaseDays >= 27.68493) return 'New Moon';
+    if (currentPhaseDays < 5.53699) return 'Waxing Crescent';
+    if (currentPhaseDays < 9.22831) return 'First Quarter';
+    if (currentPhaseDays < 12.91963) return 'Waxing Gibbous';
+    if (currentPhaseDays < 16.61096) return 'Full Moon';
+    if (currentPhaseDays < 20.30228) return 'Waning Gibbous';
+    if (currentPhaseDays < 23.99361) return 'Last Quarter';
+    // if (currentPhaseDays < 27.68493) return 'Waning Crescent';
+    return 'Waning Crescent'; // Fallback for the last segment
+  }
 }

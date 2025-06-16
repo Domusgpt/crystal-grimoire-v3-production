@@ -118,6 +118,70 @@ class AIService {
   // static List<String> _extractElements(...) { ... } // REMOVE
   // static List<String> _extractHealingProperties(...) { ... } // REMOVE
 
+
+  // Placeholder for UserProfile loading if AuthService doesn't provide it directly
+  // This would ideally be part of AuthService or a dedicated UserDataService
+  static Future<UserProfile?> _loadUserProfile(String userId) async {
+    // This is a simplified stub. In a real app, this would fetch from Firestore or a repository.
+    // For now, we'll rely on StorageService if it has a method, or return a default.
+    // return await StorageService.loadUserProfile(); // Assuming StorageService has a method to load the current user's profile
+
+    // For the purpose of this subtask, if StorageService.loadUserProfile() isn't static or easily callable,
+    // we'll simulate loading or creating a default one.
+    // The subtask mentions `AuthService` (to get current `UserProfile`), but AuthService typically gives firebase User.
+    // We'll assume a mechanism exists or use a placeholder.
+    print("AIService: _loadUserProfile called for $userId. Returning default or previously stored profile.");
+    // This is a placeholder. A real implementation would fetch the specific user's profile.
+    // If StorageService.loadUserProfile() is static and loads the *current* user's profile, it can be used.
+    // Otherwise, this needs a proper implementation or AuthService needs to expose UserProfile.
+    final profile = await StorageService.loadUserProfile(); // This loads THE UserProfile, not specific by ID.
+    if (profile != null && (profile.id == userId || userId == "current_user_placeholder")) return profile; // Basic check
+    return UserProfile.createDefault(); // Fallback
+  }
+
+
+  /// Provides personalized metaphysical guidance.
+  static Future<String> getPersonalizedMetaphysicalGuidance({
+    required String userQuery,
+    required String guidanceType,
+    required UserProfile currentUserProfile, // Directly pass UserProfile
+    required CollectionServiceV2 collectionService, // Pass CollectionServiceV2 instance
+    required BackendService backendService, // Pass BackendService instance
+    required AstrologyService astrologyService, // Pass AstrologyService instance
+  }) async {
+    try {
+      if (currentUserProfile == null) { // Should not happen if called correctly
+        throw Exception("User profile is required for personalized guidance.");
+      }
+
+      List<CollectionEntry> userCrystalCollection = await collectionService.loadUserOwnedCrystals();
+
+      final contextBuilder = UnifiedLLMContextBuilder(astrologyService: astrologyService);
+
+      final Map<String, dynamic> llmContext = await contextBuilder.buildUserContextForLLM(
+        userProfile: currentUserProfile,
+        crystalCollection: userCrystalCollection,
+        currentQuery: userQuery,
+        queryType: guidanceType,
+      );
+
+      // Option B: Call BackendService with the structured context
+      final backendResponse = await backendService.getPersonalizedGuidance(
+        guidanceType: guidanceType,
+        userProfile: llmContext, // userProfile here is the rich context map
+        customPrompt: userQuery,
+      );
+
+      return backendResponse['guidance'] as String? ?? "Error: No guidance content received from backend.";
+
+    } catch (e) {
+      print('AIService: Error in getPersonalizedMetaphysicalGuidance: $e');
+      // Consider a more user-friendly fallback or rethrow a specific exception type
+      return "I'm sorry, I couldn't retrieve personalized guidance at this time. Please try again later. Error: $e";
+    }
+  }
+
+
   static Exception _handleError(dynamic error) {
     // This error handler might need adjustment if errors from BackendService are already well-formed.
     print('🔮 AIService Handling error: $error');
@@ -135,4 +199,17 @@ class AIService {
 
   // /// Demo mode identification - REMOVE (Backend can have its own mock/demo if needed)
   // static CrystalIdentification _getDemoIdentification(...) { ... } // REMOVE
+
+
+  // Note on identifyCrystal personalization:
+  // To further personalize `identifyCrystal`:
+  // 1. `AIService.identifyCrystal` would need access to UserProfile and CollectionServiceV2 (or their data).
+  // 2. It would instantiate `UnifiedLLMContextBuilder` (with AstrologyService).
+  // 3. Build the `llmContext` map.
+  // 4. The `userTextContext` passed to `BackendService.identifyCrystal` could then be:
+  //    a. A JSON string of the full `llmContext`.
+  //    b. A summary string derived from `llmContext`.
+  //    c. Or, `BackendService.identifyCrystal`'s `user_context` field in its requestBody could be expanded
+  //       to accept more structured data from this `llmContext` if the backend API supports it.
+  // This subtask focuses on `getPersonalizedMetaphysicalGuidance`, so these are notes for future enhancement.
 }

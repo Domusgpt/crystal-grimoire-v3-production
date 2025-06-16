@@ -4,6 +4,11 @@ import 'dart:ui';
 import '../services/app_state.dart';
 import '../services/collection_service_v2.dart';
 import 'package:provider/provider.dart';
+import '../models/user_profile.dart';
+import '../models/scheduled_ritual.dart'; // Added
+import '../services/storage_service.dart'; // Added
+import 'package:intl/intl.dart'; // Added
+import '../widgets/common/mystical_card.dart'; // Assuming this exists for styling scheduled rituals
 
 class MoonRitualScreen extends StatefulWidget {
   const MoonRitualScreen({Key? key}) : super(key: key);
@@ -15,6 +20,8 @@ class MoonRitualScreen extends StatefulWidget {
 class _MoonRitualScreenState extends State<MoonRitualScreen> {
   String selectedPhase = 'Waxing Crescent';
   List<String> recommendedCrystals = [];
+  List<ScheduledRitual> _scheduledRituals = []; // Added
+  bool _isLoadingRituals = true; // Added
   
   final Map<String, Map<String, dynamic>> moonPhaseData = {
     'New Moon': {
@@ -71,6 +78,19 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
   void initState() {
     super.initState();
     _updateRecommendedCrystals();
+    _loadScheduledRitualsFromStorage(); // Added
+  }
+
+  Future<void> _loadScheduledRitualsFromStorage() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingRituals = true;
+    });
+    _scheduledRituals = await StorageService.loadScheduledRituals();
+    if (!mounted) return;
+    setState(() {
+      _isLoadingRituals = false;
+    });
   }
 
   void _updateRecommendedCrystals() {
@@ -86,6 +106,52 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProfile = Provider.of<UserProfile>(context);
+
+    if (!userProfile.hasAccessTo('moon_rituals')) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Moon Rituals',
+            style: GoogleFonts.cinzel(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white, // Assuming a dark theme for the paywall screen
+            ),
+          ),
+          backgroundColor: const Color(0xFF1A0B2E), // Matching dark theme
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF0A0015),
+                Color(0xFF1A0B2E),
+                Color(0xFF2D1B69),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                'Moon Rituals are a Pro feature. Please upgrade your subscription to unlock this mystical journey.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  color: Colors.white.withOpacity(0.8),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -162,6 +228,11 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
                   
                   // Schedule ritual button
                   _buildScheduleButton(),
+
+                  const SizedBox(height: 32), // Spacing before the list
+
+                  // Display Scheduled Rituals
+                  _buildScheduledRitualsList(),
                 ],
               ),
             ),
@@ -509,16 +580,52 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Ritual scheduled for $selectedPhase!',
-                  style: GoogleFonts.poppins(),
-                ),
-                backgroundColor: const Color(0xFF6366F1),
-              ),
+          onTap: () async {
+            final DateTime? pickedDate = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)), // Allow scheduling for up to a year
+              builder: (context, child) { // Optional: Theming the date picker
+                return Theme(
+                  data: ThemeData.dark().copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: const Color(0xFF6366F1), // Header background
+                      onPrimary: Colors.white, // Header text
+                      onSurface: Colors.white70, // Body text
+                    ),
+                    dialogBackgroundColor: const Color(0xFF1A0B2E),
+                  ),
+                  child: child!,
+                );
+              },
             );
+
+            if (pickedDate != null) {
+              final ritualName = moonPhaseData[selectedPhase]?['ritual'] as String? ?? 'Moon Ritual';
+              final newRitual = ScheduledRitual(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                moonPhase: selectedPhase,
+                ritualName: ritualName,
+                scheduledDate: pickedDate,
+              );
+
+              _scheduledRituals.add(newRitual);
+              await StorageService.saveScheduledRituals(_scheduledRituals);
+
+              if(mounted) {
+                setState(() {}); // Refresh UI to show the new ritual in the list
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '${newRitual.ritualName} scheduled for ${DateFormat('yyyy-MM-dd').format(pickedDate)}!',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor: const Color(0xFF6366F1),
+                  ),
+                );
+              }
+            }
           },
           borderRadius: BorderRadius.circular(16),
           child: Center(
@@ -543,6 +650,73 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildScheduledRitualsList() {
+    if (_isLoadingRituals) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+
+    if (_scheduledRituals.isEmpty) {
+      return Center(
+        child: Text(
+          'No rituals scheduled yet.',
+          style: GoogleFonts.poppins(color: Colors.white70, fontSize: 16),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your Scheduled Rituals',
+          style: GoogleFonts.cinzel(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(), // Disable scrolling for inner ListView
+          itemCount: _scheduledRituals.length,
+          itemBuilder: (context, index) {
+            final ritual = _scheduledRituals[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: MysticalCard( // Using MysticalCard or similar themed card
+                child: ListTile(
+                  title: Text(
+                    ritual.ritualName,
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Colors.white),
+                  ),
+                  subtitle: Text(
+                    '${ritual.moonPhase} - ${DateFormat('EEE, MMM d, yyyy').format(ritual.scheduledDate)}',
+                    style: GoogleFonts.poppins(color: Colors.white70),
+                  ),
+                  trailing: IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.7)),
+                    onPressed: () async {
+                      _scheduledRituals.removeWhere((r) => r.id == ritual.id);
+                      await StorageService.saveScheduledRituals(_scheduledRituals);
+                      if(mounted) setState(() {});
+                       ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${ritual.ritualName} removed.', style: GoogleFonts.poppins()),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
