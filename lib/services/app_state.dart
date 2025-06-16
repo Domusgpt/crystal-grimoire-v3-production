@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../models/crystal.dart';
 import '../models/crystal_collection.dart';
 import '../models/unified_crystal_data.dart';
+import '../models/model_compatibility.dart';
 import 'usage_tracker.dart';
 import 'cache_service.dart';
 import 'collection_service_v2.dart';
