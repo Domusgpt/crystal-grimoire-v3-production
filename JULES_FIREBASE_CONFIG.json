@@ -5,9 +5,9 @@
     "location": "us-central1",
     "web_config": {
       "apiKey": "AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c",
-      "authDomain": "crystalgrimoire-production.firebaseapp.com",
-      "projectId": "crystalgrimoire-production",
-      "storageBucket": "crystalgrimoire-production.appspot.com",
+      "authDomain": "crystalgrimoire-v3-production.firebaseapp.com",
+      "projectId": "crystalgrimoire-v3-production",
+      "storageBucket": "crystalgrimoire-v3-production.appspot.com",
       "messagingSenderId": "1077070194300",
       "appId": "1:1077070194300:web:eb4fc5b69fb9c51c96f5eb",
       "measurementId": "G-B2QJY94ZQ9"
@@ -28,7 +28,7 @@
     "crystal_identify": "/api/crystal/identify",
     "status": "/helloworld"
   },
-  "frontend_url": "https://crystalgrimoire-production.web.app",
+  "frontend_url": "https://crystalgrimoire-v3-production.web.app",
   "project_structure": {
     "flutter_code": "/lib",
     "firebase_functions": "/functions",

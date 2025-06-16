@@ -42,46 +42,47 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c',
-    appId: '1:937741022651:web:cf181d053f178c9298c09e',
-    messagingSenderId: '937741022651',
-    projectId: 'crystalgrimoire-production',
-    authDomain: 'crystalgrimoire-production.firebaseapp.com',
-    storageBucket: 'crystalgrimoire-production.firebasestorage.app',
+    appId: '1:1077070194300:web:eb4fc5b69fb9c51c96f5eb',
+    messagingSenderId: '1077070194300',
+    projectId: 'crystalgrimoire-v3-production',
+    authDomain: 'crystalgrimoire-v3-production.firebaseapp.com',
+    storageBucket: 'crystalgrimoire-v3-production.appspot.com',
+    measurementId: 'G-B2QJY94ZQ9',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c',
-    appId: '1:937741022651:web:cf181d053f178c9298c09e',
-    messagingSenderId: '937741022651',
-    projectId: 'crystalgrimoire-production',
-    storageBucket: 'crystalgrimoire-production.firebasestorage.app',
+    appId: '1:1077070194300:android:eb4fc5b69fb9c51c96f5eb',
+    messagingSenderId: '1077070194300',
+    projectId: 'crystalgrimoire-v3-production',
+    storageBucket: 'crystalgrimoire-v3-production.appspot.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c',
-    appId: '1:937741022651:web:cf181d053f178c9298c09e',
-    messagingSenderId: '937741022651',
-    projectId: 'crystalgrimoire-production',
-    storageBucket: 'crystalgrimoire-production.firebasestorage.app',
+    appId: '1:1077070194300:ios:eb4fc5b69fb9c51c96f5eb',
+    messagingSenderId: '1077070194300',
+    projectId: 'crystalgrimoire-v3-production',
+    storageBucket: 'crystalgrimoire-v3-production.appspot.com',
     iosBundleId: 'com.clearseasolutions.crystalgrimoire',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c',
-    appId: '1:937741022651:web:cf181d053f178c9298c09e',
-    messagingSenderId: '937741022651',
-    projectId: 'crystalgrimoire-production',
-    storageBucket: 'crystalgrimoire-production.firebasestorage.app',
+    appId: '1:1077070194300:ios:eb4fc5b69fb9c51c96f5eb',
+    messagingSenderId: '1077070194300',
+    projectId: 'crystalgrimoire-v3-production',
+    storageBucket: 'crystalgrimoire-v3-production.appspot.com',
     iosBundleId: 'com.clearseasolutions.crystalgrimoire',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
     apiKey: 'AIzaSyCfaw8I-rwXu8j0El340yIGr-N2agTzp6c',
-    appId: '1:937741022651:web:cf181d053f178c9298c09e',
-    messagingSenderId: '937741022651',
-    projectId: 'crystalgrimoire-production',
-    authDomain: 'crystalgrimoire-production.firebaseapp.com',
-    storageBucket: 'crystalgrimoire-production.firebasestorage.app',
+    appId: '1:1077070194300:web:eb4fc5b69fb9c51c96f5eb',
+    messagingSenderId: '1077070194300',
+    projectId: 'crystalgrimoire-v3-production',
+    authDomain: 'crystalgrimoire-v3-production.firebaseapp.com',
+    storageBucket: 'crystalgrimoire-v3-production.appspot.com',
   );
 
 }
