@@ -151,47 +151,97 @@ class _SoundBathScreenState extends State<SoundBathScreen>
   @override
   Widget build(BuildContext context) {
     final userProfile = Provider.of<UserProfile>(context);
+    final theme = Theme.of(context); // Get theme for consistency
 
     if (!userProfile.hasAccessTo('sound_bath')) {
+      // Paywall structure similar to JournalScreen, MoonRitualScreen
       return Scaffold(
+        backgroundColor: theme.colorScheme.background,
         appBar: AppBar(
           title: Text(
             'Sound Bath',
             style: GoogleFonts.cinzel(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: theme.colorScheme.onBackground,
             ),
           ),
-          backgroundColor: const Color(0xFF1A0B2E), // Consistent dark theme
-          iconTheme: const IconThemeData(color: Colors.white),
+          backgroundColor: theme.colorScheme.background,
+          elevation: 0,
+          iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
         ),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0A0015),
-                Color(0xFF1A0B2E),
-                Color(0xFF2D1B69),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                'Sound Bath is a Pro feature. Please upgrade to immerse yourself in healing frequencies.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  color: Colors.white.withOpacity(0.8),
-                  height: 1.5,
+        body: Stack(
+          children: [
+            Container( // Background gradient consistent with the screen's theme
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0A0015), // Dark top from screen's theme
+                    Color(0xFF1A0B2E), // Mid
+                    Color(0xFF2D1B69), // Lighter bottom
+                  ],
                 ),
               ),
             ),
-          ),
+            // Optional: const FloatingParticles(particleCount: 15, color: Colors.lightBlueAccent),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: MysticalCard( // Assuming MysticalCard is available and styled
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.waves, // Icon related to Sound/Waves
+                          size: 48,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Unlock Sound Bath',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'This is a Pro feature. Please upgrade your subscription to immerse yourself in healing frequencies and soundscapes.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.star_border_purple500_sharp),
+                          label: const Text('Upgrade to Pro'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: theme.colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            textStyle: theme.textTheme.titleMedium,
+                          ),
+                          onPressed: () {
+                            // TODO: Navigate to subscription page
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Navigate to subscription page (Not Implemented)')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }

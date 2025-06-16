@@ -263,46 +263,101 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
       return _buildActiveHealingSessionView(_activeSessionChakra!);
     }
 
+    final theme = Theme.of(context); // Get theme for consistency
+
+    if (_isSessionActive && _activeSessionChakra != null) {
+      return _buildActiveHealingSessionView(_activeSessionChakra!);
+    }
+
     if (!userProfile.hasAccessTo('crystal_healing')) {
+      // Paywall structure similar to JournalScreen and MoonRitualScreen
       return Scaffold(
+        backgroundColor: theme.colorScheme.background, // Use theme background
         appBar: AppBar(
           title: Text(
             'Crystal Healing',
             style: GoogleFonts.cinzel(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: theme.colorScheme.onBackground, // Use theme color
             ),
           ),
-          backgroundColor: const Color(0xFF1A0B2E), // Consistent dark theme
-          iconTheme: const IconThemeData(color: Colors.white),
+          backgroundColor: theme.colorScheme.background, // Use theme background
+          elevation: 0,
+          iconTheme: IconThemeData(color: theme.colorScheme.onBackground), // Use theme color
         ),
-        body: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF0A0015),
-                Color(0xFF1A0B2E),
-                Color(0xFF2D1B69),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                'Crystal Healing is a Pro feature. Please upgrade to access guided healing sessions and unlock your chakras.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  color: Colors.white.withOpacity(0.8),
-                  height: 1.5,
+        body: Stack(
+          children: [
+            Container( // Background gradient consistent with the screen's theme
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0A0015), // Dark top from screen's theme
+                    Color(0xFF1A0B2E), // Mid
+                    Color(0xFF2D1B69), // Lighter bottom
+                  ],
                 ),
               ),
             ),
-          ),
+            // Optional: const FloatingParticles(particleCount: 15, color: Colors.tealAccent), // Teal for healing
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: MysticalCard(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.self_improvement, // Icon related to Healing
+                          size: 48,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Unlock Crystal Healing',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'This is a Pro feature. Please upgrade your subscription to access guided healing sessions and unlock your chakras.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.star_border_purple500_sharp),
+                          label: const Text('Upgrade to Pro'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: theme.colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            textStyle: theme.textTheme.titleMedium,
+                          ),
+                          onPressed: () {
+                            // TODO: Navigate to subscription page
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Navigate to subscription page (Not Implemented)')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -353,23 +408,33 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
           ),
           
           SafeArea(
-            child: selectedChakra == null && !_isSessionActive // Ensure session view takes precedence
-                ? _buildChakraSelector()
-                : _isSessionActive && _activeSessionChakra != null
-                    ? _buildActiveHealingSessionView(_activeSessionChakra!) // Should be handled by outer if, but for safety
-                    : _buildHealingSession(),
+            child: AnimatedSwitcher( // Added AnimatedSwitcher here
+              duration: const Duration(milliseconds: 300),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+              child: _isSessionActive && _activeSessionChakra != null
+                  ? _buildActiveHealingSessionView(_activeSessionChakra!, key: const ValueKey("activeSessionView"))
+                  : selectedChakra == null
+                      ? _buildChakraSelector(key: const ValueKey("chakraSelectorView"))
+                      : _buildHealingSession(key: const ValueKey("healingSessionSetupView")),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildActiveHealingSessionView(String chakraName) {
+  Widget _buildActiveHealingSessionView(String chakraName, {Key? key}) { // Added Key
     final theme = Theme.of(context);
     final data = chakraData[chakraName]!;
+    final double progress = (_sessionDurationSeconds > 0)
+        ? 1.0 - (_currentTimerSeconds / _sessionDurationSeconds)
+        : 0.0;
 
     return Scaffold(
-      backgroundColor: data['color'] as Color, // Use chakra color for background
+      key: key, // Use the key
+      backgroundColor: data['color'] as Color,
       appBar: AppBar(
         title: Text('Healing: $chakraName', style: GoogleFonts.cinzel(fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: Colors.transparent,
@@ -377,61 +442,57 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
         iconTheme: const IconThemeData(color: Colors.white),
         leading: IconButton(
           icon: const Icon(Icons.close),
-          onPressed: () => _finishHealingSession(isCompleted: false), // Allow closing session early
+          onPressed: () => _finishHealingSession(isCompleted: false),
         ),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AnimatedBuilder( // Re-use pulse animation for visual feedback
-              animation: _pulseAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _pulseAnimation.value,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.3),
-                          blurRadius: 30,
-                          spreadRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(Icons.self_improvement, size: 100, color: Colors.white),
+        child: Padding( // Added padding for overall content
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 220,
+                    height: 220,
+                    child: CircularProgressIndicator(
+                      value: progress,
+                      strokeWidth: 10,
+                      backgroundColor: Colors.white.withOpacity(0.25),
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.9)),
                     ),
                   ),
-                );
-              },
-            ),
-            const SizedBox(height: 40),
-            Text(
-              _formatDuration(Duration(seconds: _currentTimerSeconds)),
-              style: GoogleFonts.poppins(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
-            ),
-            const SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40.0),
-              child: Text(
-                data['affirmation'] as String,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(fontSize: 18, color: Colors.white.withOpacity(0.9), fontStyle: FontStyle.italic),
+                  Text(
+                    _formatDuration(Duration(seconds: _currentTimerSeconds)),
+                    style: theme.textTheme.displayMedium?.copyWith( // Larger style
+                        color: Colors.white, fontWeight: FontWeight.bold,
+                        fontFamily: GoogleFonts.poppins().fontFamily // Consistent font
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 50),
-            MysticalButton(
-              text: "Finish Early",
-              onPressed: () => _finishHealingSession(isCompleted: true), // Log as completed even if finished early
-              backgroundColor: Colors.white.withOpacity(0.2),
-              textColor: Colors.white,
-            ),
-          ],
+              const SizedBox(height: 50), // Increased spacing
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 30.0), // Adjusted padding
+                child: Text(
+                  data['affirmation'] as String,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(fontSize: 20, color: Colors.white.withOpacity(0.95), fontStyle: FontStyle.italic, height: 1.5), // Enhanced style
+                ),
+              ),
+              const SizedBox(height: 60), // Increased spacing
+              MysticalButton(
+                text: "Finish Session", // Changed text
+                onPressed: () => _finishHealingSession(isCompleted: true),
+                backgroundColor: Colors.white.withOpacity(0.25),
+                textColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15), // Added padding
+                icon: Icons.check_circle_outline, // Added icon
+              ),
+            ],
+          ),
         ),
       ),
     );

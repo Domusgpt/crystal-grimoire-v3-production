@@ -402,7 +402,15 @@ class _JournalScreenState extends State<JournalScreen>
 
                   // Content
                   Expanded(
-                    child: _isWriting ? _buildWritingView() : _buildJournalView(),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        return FadeTransition(opacity: animation, child: child);
+                      },
+                      child: _isWriting
+                          ? _buildWritingView(key: const ValueKey('writingView')) // Added keys for AnimatedSwitcher
+                          : _buildJournalView(key: const ValueKey('journalView')),
+                    ),
                   ),
                 ],
               ),
@@ -416,33 +424,44 @@ class _JournalScreenState extends State<JournalScreen>
   Widget _buildWritingView() {
     final theme = Theme.of(context);
 
+    // This is the state of _buildWritingView and _showCrystalSelectionDialog from commit 01HYC3V8PNHDSG8PCH1Z02H49W
+    // I will re-paste the complete intended code for these two methods here.
+    // The AnimatedSwitcher part will be handled in the main build method's diff.
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: SingleChildScrollView(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, // Ensure children take full width
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Moon Phase Display
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Text(
-                'Moon Phase: ${_currentMoonPhase ?? "Loading..."}', // Show loading if null
-                style: theme.textTheme.labelLarge?.copyWith(color: theme.colorScheme.secondary),
-                textAlign: TextAlign.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.nightlight_round, color: theme.colorScheme.secondary, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Moon Phase: ${_currentMoonPhase ?? "Loading..."}',
+                    style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.secondary), // Adjusted style
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 16),
 
             // Mood Tags Input
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("I'm Feeling:", style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                  Text("I'm Feeling:", style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8.0,
-                    runSpacing: 4.0,
+                    runSpacing: 6.0,
                     children: _predefinedMoods.map((mood) {
                       final isSelected = _selectedMoods.contains(mood);
                       return ChoiceChip(
@@ -463,45 +482,51 @@ class _JournalScreenState extends State<JournalScreen>
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                         ),
                         backgroundColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
-                        elevation: isSelected ? 2 : 0,
-                        pressElevation: 4,
+                        elevation: isSelected ? 3 : 1,
+                        pressElevation: 5,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       );
                     }).toList(),
                   ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
 
             // Crystals Used Input
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12.0),
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                   Text("Crystals Used:", style: theme.textTheme.titleMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+                   const SizedBox(height: 4),
                   TextButton.icon(
                     icon: Icon(Icons.diamond_outlined, color: theme.colorScheme.secondary),
-                    label: Text("Select Crystals Used", style: TextStyle(color: theme.colorScheme.secondary)),
+                    label: Text("Select Crystals", style: TextStyle(color: theme.colorScheme.secondary)),
                     onPressed: _showCrystalSelectionDialog,
                     style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 0, vertical: 8), // Adjust padding
-                      alignment: Alignment.centerLeft
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                      alignment: Alignment.centerLeft,
                     ),
                   ),
-                  if (_selectedCrystalIds.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4.0, left: 4.0),
-                      child: Text(
-                        "Selected: ${_selectedCrystalIds.map((id) => _ownedCrystals.firstWhere((c) => c.crystalId == id, orElse: () => CollectionEntry(id: '', crystalId: id, name: 'Unknown', addedDate: DateTime.now(), properties: {})).name).join(', ')}",
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                      ),
+                  Padding( // Changed from `if` to always show, displaying "None selected"
+                    padding: const EdgeInsets.only(top: 0, left: 4.0),
+                    child: Text(
+                      _selectedCrystalIds.isEmpty
+                          ? "None selected"
+                          : "Using: ${_selectedCrystalIds.map((id) => _ownedCrystals.firstWhere((c) => c.crystalId == id, orElse: () => CollectionEntry(id: '', crystalId: id, name: 'Unknown', addedDate: DateTime.now(), properties: {})).name).join(', ')}",
+                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8)),
                     ),
+                  ),
                 ],
               ),
             ),
+            const SizedBox(height: 16),
 
             // Main Text Field
             SizedBox(
-              height: 250, // Adjust as needed, or use constraints
+              height: 250,
               child: MysticalCard(
                 elevation: 2,
                 child: TextField(
@@ -542,21 +567,18 @@ class _JournalScreenState extends State<JournalScreen>
        ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Loading your crystals... Try again in a moment.'))
       );
-      // Attempt to reload if empty, in case initial load failed or was slow
-      if (!_isLoading) { // Avoid multiple loads if already loading entries
+      if (!_isLoading) {
         _loadDataForWritingView();
       }
       return;
     }
-    // if (_ownedCrystals.isEmpty && !mounted) return; // This check is redundant if mounted check is done above
-
 
     List<String> dialogSelectedCrystalIds = List.from(_selectedCrystalIds);
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        final dialogTheme = Theme.of(context); // Capture theme for dialog
+        final dialogTheme = Theme.of(context);
         return AlertDialog(
           backgroundColor: dialogTheme.colorScheme.surface,
           title: Text("Select Crystals Used", style: dialogTheme.textTheme.titleLarge?.copyWith(color: dialogTheme.colorScheme.onSurface)),

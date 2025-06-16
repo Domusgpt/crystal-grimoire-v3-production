@@ -647,4 +647,36 @@ class BackendService {
       throw Exception('Failed to delete journal entry: $e');
     }
   }
+
+  /// Sync UserProfile to the backend.
+  Future<void> syncUserProfile(Map<String, dynamic> userProfileJson) async {
+    if (!isAuthenticated || _userId == null) {
+      throw Exception('Authentication required to sync user profile.');
+    }
+    final String endpointUrl = '${BackendConfig.baseUrl}/users/$_userId/profile'; // Conceptual endpoint
+
+    try {
+      final response = await _httpClient.put(
+        Uri.parse(endpointUrl),
+        headers: _headers..addAll({'Content-Type': 'application/json'}),
+        body: jsonEncode(userProfileJson),
+      ).timeout(BackendConfig.apiTimeout);
+
+      if (response.statusCode == 200) {
+        // Successfully synced. Backend might return the updated profile,
+        // but this method is void for now.
+        print('UserProfile synced successfully for userId: $_userId');
+        return;
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again to sync profile.');
+      } else {
+        final error = jsonDecode(response.body);
+        throw Exception(error['detail'] ?? 'Failed to sync user profile: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in syncUserProfile: $e');
+      throw Exception('Failed to sync user profile: $e');
+    }
+  }
 }
