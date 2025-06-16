@@ -209,6 +209,8 @@ class UnifiedLLMContextBuilder {
     return prompt.toString();
   }
 
+  // Removed _getCurrentMoonPhaseSimple() as it's now handled by AstrologyService
+
   /// Extract spiritual context from birth chart
   Map<String, dynamic> _extractSpiritualContext(dynamic birthChart) { // Keep dynamic for UserProfile.birthChart flexibility
     if (birthChart == null) return {
