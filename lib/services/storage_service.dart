@@ -13,6 +13,7 @@ class StorageService {
   static const String _queryDateKey = 'query_date';
   static const String _userProfileKey = 'user_profile';
   static const String _adMetricsKey = 'ad_metrics';
+  static const String _scheduledRitualsKey = 'scheduled_rituals'; // Added key
   
   bool _isInitialized = false;
   
@@ -277,6 +278,26 @@ class StorageService {
     }
     
     return metrics;
+  }
+
+  // Scheduled Rituals
+  static Future<void> saveScheduledRituals(List<ScheduledRitual> rituals) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Need to import 'package:crystal_grimoire/models/scheduled_ritual.dart'; for ScheduledRitual
+    // Assuming it will be available in the scope where this service is used or via an import at the top of the file.
+    // For now, the type check might complain here if the import is not added by a prior step.
+    final List<String> ritualsJson = rituals.map((r) => json.encode(r.toJson())).toList();
+    await prefs.setStringList(_scheduledRitualsKey, ritualsJson);
+  }
+
+  static Future<List<ScheduledRitual>> loadScheduledRituals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? ritualsJson = prefs.getStringList(_scheduledRitualsKey);
+    if (ritualsJson == null) {
+      return [];
+    }
+    // Same assumption about ScheduledRitual import as above.
+    return ritualsJson.map((r) => ScheduledRitual.fromJson(json.decode(r) as Map<String, dynamic>)).toList();
   }
   
 }

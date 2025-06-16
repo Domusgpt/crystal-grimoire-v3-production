@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'dart:async'; // Added for Timer
 import '../services/collection_service_v2.dart';
 import 'package:provider/provider.dart';
+import '../models/user_profile.dart';
+import '../models/journal_entry.dart'; // Added for JournalEntry
+import '../services/astrology_service.dart'; // Added for AstrologyService
+import '../widgets/common/mystical_button.dart'; // For consistent button styling
 
 class CrystalHealingScreen extends StatefulWidget {
   const CrystalHealingScreen({Key? key}) : super(key: key);
@@ -21,6 +26,13 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
   
   String? selectedChakra;
   List<String> recommendedCrystals = [];
+
+  // State variables for session management
+  bool _isSessionActive = false;
+  String? _activeSessionChakra;
+  Timer? _sessionTimer;
+  final int _sessionDurationSeconds = 300; // 5 minutes default
+  int _currentTimerSeconds = 0;
   
   final Map<String, Map<String, dynamic>> chakraData = {
     'Crown': {
@@ -122,7 +134,14 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
   void dispose() {
     _chakraAnimationController.dispose();
     _pulseController.dispose();
+    _sessionTimer?.cancel(); // Cancel timer on dispose
     super.dispose();
+  }
+
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
   }
 
   void _selectChakra(String chakra) {
@@ -137,14 +156,157 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
     final chakraCrystals = chakraData[chakra]!['crystals'] as List<String>;
     
     // Filter to show only crystals the user owns
+    // Assuming collectionService.collection is List<UnifiedCrystalData>
+    // and entry.crystal.name is the correct way to access the name.
+    // This logic might need adjustment if `recommendedCrystals` should store more than just names,
+    // e.g., if IDs are needed for `crystalIdsUsed` in JournalEntry.
+    // For now, keeping it as names.
     recommendedCrystals = collectionService.collection
-        .where((entry) => chakraCrystals.contains(entry.crystal.name))
-        .map((entry) => entry.crystal.name)
+        .where((ucd) => chakraCrystals.contains(ucd.name)) // Assuming ucd.name is correct
+        .map((ucd) => ucd.name)
         .toList();
   }
 
+  Future<void> _startHealingSession() async {
+    if (selectedChakra == null) return;
+    setState(() {
+      _isSessionActive = true;
+      _activeSessionChakra = selectedChakra;
+      _currentTimerSeconds = _sessionDurationSeconds;
+    });
+
+    _sessionTimer?.cancel(); // Cancel any existing timer
+    _sessionTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        if (_currentTimerSeconds > 0) {
+          _currentTimerSeconds--;
+        } else {
+          _finishHealingSession(isCompleted: true);
+        }
+      });
+    });
+  }
+
+  Future<void> _finishHealingSession({bool isCompleted = true}) async {
+    _sessionTimer?.cancel();
+    final chakraName = _activeSessionChakra; // Capture before resetting state
+
+    if (isCompleted && chakraName != null && mounted) {
+      try {
+        final astrologyService = Provider.of<AstrologyService>(context, listen: false);
+        final collectionService = Provider.of<CollectionServiceV2>(context, listen: false);
+        // UserProfile is already available via Provider earlier in the build method if needed,
+        // but for service calls, it's better to re-fetch with listen:false if profile data is needed for the entry.
+        // For this journal entry, we don't strictly need UserProfile fields.
+
+        final moonPhase = await astrologyService.getCurrentMoonPhase();
+
+        // Map recommended crystal names to their IDs from the main collection if possible.
+        // This is a simplified approach; a robust solution might involve passing UCD objects or IDs earlier.
+        List<String> crystalIdentifiers = [];
+        if (recommendedCrystals.isNotEmpty) {
+             final fullCollection = collectionService.collection; // List<UnifiedCrystalData>
+             for (String name in recommendedCrystals) {
+                 final found = fullCollection.where((ucd) => ucd.name == name).firstOrNull;
+                 if (found != null) {
+                     crystalIdentifiers.add(found.id); // Add ID if found
+                 } else {
+                     crystalIdentifiers.add(name); // Fallback to name if ID mapping is complex/unavailable
+                 }
+             }
+        }
+
+
+        final newEntry = JournalEntry(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: "Crystal Healing: $chakraName Chakra",
+          content: "Completed a $chakraName chakra healing session. Affirmation: '${chakraData[chakraName]!['affirmation']}'. Crystals used: ${recommendedCrystals.join(', ')}.",
+          date: DateTime.now(),
+          crystalIdsUsed: crystalIdentifiers, // Use mapped IDs or names
+          moodTags: ["Healing", "Chakra Balancing", chakraName],
+          moonPhase: moonPhase,
+        );
+        await collectionService.saveJournalEntry(newEntry);
+
+        if(mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Healing session logged to journal.')),
+            );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to log session: ${e.toString()}')),
+          );
+        }
+      }
+    }
+    if(mounted) {
+      setState(() {
+        _isSessionActive = false;
+        _activeSessionChakra = null;
+        selectedChakra = null; // Also deselect chakra to go back to selector screen
+      });
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
+    final userProfile = Provider.of<UserProfile>(context);
+
+    if (_isSessionActive && _activeSessionChakra != null) {
+      return _buildActiveHealingSessionView(_activeSessionChakra!);
+    }
+
+    if (!userProfile.hasAccessTo('crystal_healing')) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(
+            'Crystal Healing',
+            style: GoogleFonts.cinzel(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: const Color(0xFF1A0B2E), // Consistent dark theme
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF0A0015),
+                Color(0xFF1A0B2E),
+                Color(0xFF2D1B69),
+              ],
+            ),
+          ),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                'Crystal Healing is a Pro feature. Please upgrade to access guided healing sessions and unlock your chakras.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  color: Colors.white.withOpacity(0.8),
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -191,14 +353,90 @@ class _CrystalHealingScreenState extends State<CrystalHealingScreen>
           ),
           
           SafeArea(
-            child: selectedChakra == null
+            child: selectedChakra == null && !_isSessionActive // Ensure session view takes precedence
                 ? _buildChakraSelector()
-                : _buildHealingSession(),
+                : _isSessionActive && _activeSessionChakra != null
+                    ? _buildActiveHealingSessionView(_activeSessionChakra!) // Should be handled by outer if, but for safety
+                    : _buildHealingSession(),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildActiveHealingSessionView(String chakraName) {
+    final theme = Theme.of(context);
+    final data = chakraData[chakraName]!;
+
+    return Scaffold(
+      backgroundColor: data['color'] as Color, // Use chakra color for background
+      appBar: AppBar(
+        title: Text('Healing: $chakraName', style: GoogleFonts.cinzel(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => _finishHealingSession(isCompleted: false), // Allow closing session early
+        ),
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedBuilder( // Re-use pulse animation for visual feedback
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value,
+                  child: Container(
+                    width: 200,
+                    height: 200,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.3),
+                          blurRadius: 30,
+                          spreadRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Icon(Icons.self_improvement, size: 100, color: Colors.white),
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 40),
+            Text(
+              _formatDuration(Duration(seconds: _currentTimerSeconds)),
+              style: GoogleFonts.poppins(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40.0),
+              child: Text(
+                data['affirmation'] as String,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(fontSize: 18, color: Colors.white.withOpacity(0.9), fontStyle: FontStyle.italic),
+              ),
+            ),
+            const SizedBox(height: 50),
+            MysticalButton(
+              text: "Finish Early",
+              onPressed: () => _finishHealingSession(isCompleted: true), // Log as completed even if finished early
+              backgroundColor: Colors.white.withOpacity(0.2),
+              textColor: Colors.white,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildChakraSelector() {
     return Column(

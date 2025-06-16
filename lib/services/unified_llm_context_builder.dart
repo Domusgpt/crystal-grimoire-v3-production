@@ -5,10 +5,14 @@ import '../models/unified_crystal_data.dart'; // For direct type access if neede
 
 // import 'dart:convert'; // Example: if it was here and unused, remove
 
+import '../services/astrology_service.dart'; // Added import
+
 /// Unified LLM Context Builder - Creates comprehensive user context for all LLM queries
 /// Ensures every AI interaction includes user's birth chart, crystal collection, and personalization data
 class UnifiedLLMContextBuilder {
-  UnifiedLLMContextBuilder();
+  final AstrologyService astrologyService; // Added dependency
+
+  UnifiedLLMContextBuilder({required this.astrologyService}); // Updated constructor
 
   /// Build comprehensive user context JSON for any LLM query
   /// This ensures ALL AI interactions are personalized to the user
@@ -20,8 +24,8 @@ class UnifiedLLMContextBuilder {
     Map<String, dynamic>? additionalContext,
   }) async {
     try {
-      // Get current astrological context (placeholder for now)
-      final currentMoonPhase = _getCurrentMoonPhaseSimple();
+      // Get current astrological context
+      final String currentMoonPhase = await astrologyService.getCurrentMoonPhase(); // Updated
       final spiritualContext = _extractSpiritualContext(userProfile.birthChart);
       
       // Build collection statistics
@@ -147,15 +151,19 @@ class UnifiedLLMContextBuilder {
       
       final collectionDetails = collection['collection_details'] as List<dynamic>?;
       if (collectionDetails != null && collectionDetails.isNotEmpty) {
-        prompt.writeln('- Owned Crystals:');
-        for (final crystal in collectionDetails.take(10)) { // Limit to top 10 for prompt efficiency
-          prompt.writeln('  • ${crystal['name']} - Purpose: ${crystal['intentions']} (Used ${crystal['usage_count']} times)');
+        prompt.writeln('- Owned Crystals (sample):'); // Indicate it's a sample
+        for (final crystal in collectionDetails.take(5)) { // Limit to top 5 for prompt efficiency
+          prompt.writeln('  • ${crystal['name']} (Used ${crystal['usage_count']} times)');
         }
       }
       
-      final favorites = collection['favorite_crystals'] as List<dynamic>?;
+      final favorites = collection['favorite_crystals'] as List<dynamic>?; // This is already a list of maps
       if (favorites != null && favorites.isNotEmpty) {
         prompt.writeln('- Favorite Crystals: ${favorites.map((c) => c['name']).join(', ')}');
+      }
+      final mostUsed = collection['most_used_crystals'] as List<dynamic>?; // This is also a list of maps
+       if (mostUsed != null && mostUsed.isNotEmpty) {
+        prompt.writeln('- Most Used Crystals: ${mostUsed.map((c) => c['name']).join(', ')}');
       }
       prompt.writeln('');
     }
@@ -164,9 +172,12 @@ class UnifiedLLMContextBuilder {
     final spiritualPrefs = userProfile['spiritual_preferences'];
     if (spiritualPrefs != null) {
       prompt.writeln('SPIRITUAL PREFERENCES:');
-      prompt.writeln('- Goals: ${(spiritualPrefs['goals'] as List<dynamic>?)?.join(', ') ?? 'healing, growth'}');
-      prompt.writeln('- Experience Level: ${spiritualPrefs['experience_level']}');
-      prompt.writeln('- Preferred Practices: ${(spiritualPrefs['preferred_practices'] as List<dynamic>?)?.join(', ') ?? 'meditation'}');
+      prompt.writeln('- Goals: ${(spiritualPrefs['goals'] as List<dynamic>?)?.join(', ') ?? 'general well-being, spiritual growth'}');
+      prompt.writeln('- Experience Level: ${spiritualPrefs['experience_level'] ?? 'intermediate'}');
+      prompt.writeln('- Preferred Practices: ${(spiritualPrefs['preferred_practices'] as List<dynamic>?)?.join(', ') ?? 'meditation, crystal grids'}');
+      prompt.writeln('- Challenges: ${spiritualPrefs['challenges'] ?? 'seeking clarity'}');
+      prompt.writeln('- Preferred Tools: ${(spiritualPrefs['preferred_tools'] as List<dynamic>?)?.join(', ') ?? 'crystals, candles'}');
+      prompt.writeln('- Intentions: ${(spiritualPrefs['intentions'] as List<dynamic>?)?.join(', ') ?? 'peace, focus'}');
       prompt.writeln('');
     }
     
@@ -181,43 +192,42 @@ class UnifiedLLMContextBuilder {
     // Add the base prompt
     prompt.writeln('USER QUERY AND CONTEXT:');
     prompt.writeln(basePrompt);
+    if(currentContext['query_type'] != null && currentContext['query_type'] != 'general') {
+        prompt.writeln('Query Type: ${currentContext['query_type']}');
+    }
     prompt.writeln('');
     
     // Add response format instructions
     prompt.writeln('RESPONSE REQUIREMENTS:');
-    prompt.writeln('- Reference user\'s specific crystals and astrological signs');
-    prompt.writeln('- Provide actionable recommendations using their collection');
-    prompt.writeln('- Include confidence levels and transparency about AI reasoning');
-    prompt.writeln('- Maintain EMA principles of user empowerment and data ownership');
-    prompt.writeln('- Format response for easy export and user control');
+    prompt.writeln('- Reference user\'s specific crystals and astrological signs where relevant.');
+    prompt.writeln('- Provide actionable recommendations, suggesting use of their owned crystals first.');
+    prompt.writeln('- If suggesting new crystals, explain why they are beneficial in context.');
+    prompt.writeln('- Include confidence levels and transparency about AI reasoning if applicable.');
+    prompt.writeln('- Maintain EMA principles of user empowerment and data ownership.');
+    prompt.writeln('- Format response for easy readability and user control.');
     
     return prompt.toString();
   }
 
-  /// Simple moon phase calculation (placeholder)
-  String _getCurrentMoonPhaseSimple() {
-    // Simple approximation - in production would use proper lunar calculation
-    final now = DateTime.now();
-    final daysSinceNewMoon = (now.millisecondsSinceEpoch / (1000 * 60 * 60 * 24)) % 29.5;
-    
-    if (daysSinceNewMoon < 7.4) return 'Waxing Crescent';
-    if (daysSinceNewMoon < 14.8) return 'Waxing Gibbous'; 
-    if (daysSinceNewMoon < 22.1) return 'Waning Gibbous';
-    return 'Waning Crescent';
-  }
-
   /// Extract spiritual context from birth chart
-  Map<String, dynamic> _extractSpiritualContext(dynamic birthChart) {
-    if (birthChart == null) return {};
+  Map<String, dynamic> _extractSpiritualContext(dynamic birthChart) { // Keep dynamic for UserProfile.birthChart flexibility
+    if (birthChart == null) return {
+        'sun_element': 'Unknown',
+        'moon_element': 'Unknown',
+        'dominant_element': 'Unknown',
+        'compatible_crystals': [],
+        'rising_element': 'Unknown',
+        'rising_compatible_crystals': [],
+    };
     
+    // Assuming birthChart is an instance of BirthChart from birth_chart.dart
     return {
-      'sun_element': birthChart.sunSign?.element?.name ?? 'Unknown', // Null safety for element and its name
-      'moon_element': birthChart.moonSign?.element?.name ?? 'Unknown',
-      'dominant_element': birthChart.sunSign?.element?.name ?? 'Unknown', // Simplified, ensure null safety
-      'compatible_crystals': birthChart.sunSign?.compatibleCrystals ?? [], // Default to empty list
-      // Add rising sign details if available and relevant
-      'rising_element': birthChart.ascendant?.element?.name ?? 'Unknown',
-      'rising_compatible_crystals': birthChart.ascendant?.compatibleCrystals ?? [],
+      'sun_element': birthChart.sunSign.element, // Access element directly
+      'moon_element': birthChart.moonSign.element,
+      'dominant_element': birthChart.sunSign.element, // Simplified, actual dominant element needs calculation
+      'compatible_crystals': birthChart.sunSign.compatibleCrystals,
+      'rising_element': birthChart.ascendant.element,
+      'rising_compatible_crystals': birthChart.ascendant.compatibleCrystals,
     };
   }
 
@@ -246,16 +256,11 @@ class UnifiedLLMContextBuilder {
 
   /// Get favorite crystals based on usage
   List<Map<String, dynamic>> _getFavoriteCrystals(List<CollectionEntry> collection) {
-    final sorted = List<CollectionEntry>.from(collection)
-      ..sort((a, b) => b.usageCount.compareTo(a.usageCount)); // Assumes isFavorite is primary, then usage
-      // To truly get favorites, it should be based on entry.isFavorite
-      // For now, using usageCount as a proxy if isFavorite isn't the sole determinant.
-    
-    return sorted
-        .where((entry) => entry.isFavorite) // Prioritize actual favorites
-        .take(5) // Take top 5 favorites
+    return collection
+        .where((entry) => entry.isFavorite)
+        .take(5)
         .map((entry) => {
-          'name': entry.crystalData.crystalCore.identification.stoneType,
+          'name': entry.crystalData.name, // Using convenience getter from UnifiedCrystalData
           'usage_count': entry.usageCount,
           'intentions': entry.primaryUses,
         }).toList();
@@ -269,22 +274,22 @@ class UnifiedLLMContextBuilder {
     return collection
       .where((entry) => entry.dateAdded.isAfter(thirtyDaysAgo))
       .map((entry) => {
-        'name': entry.crystalData.crystalCore.identification.stoneType,
+        'name': entry.crystalData.name,
         'acquisition_date': entry.dateAdded.toIso8601String(),
-        'intentions': entry.primaryUses, // These are from CollectionEntry itself
+        'intentions': entry.primaryUses,
       })
       .toList();
   }
 
   /// Get most used crystals
   List<Map<String, dynamic>> _getMostUsedCrystals(List<CollectionEntry> collection) {
-    final sorted = List<CollectionEntry>.from(collection)
-      ..sort((a, b) => b.usageCount.compareTo(a.usageCount));
+    final sortedByUsage = List<CollectionEntry>.from(collection)
+      ..sort((a, b) => b.usageCount.compareTo(a.usageCount)); // Sort by usageCount descending
     
-    return sorted.take(5).map((entry) => {
-      'name': entry.crystalData.crystalCore.identification.stoneType,
+    return sortedByUsage.take(5).map((entry) => {
+      'name': entry.crystalData.name,
       'usage_count': entry.usageCount,
-      'last_used': 'Unknown', // No lastUsed property in CollectionEntry
+      // 'last_used': 'Unknown', // No lastUsed property in CollectionEntry, can be omitted
     }).toList();
   }
 
