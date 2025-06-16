@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "crystalgrimoire-production"
+    "default": "crystalgrimoire-v3-production"
   },
   "targets": {},
   "etags": {}
