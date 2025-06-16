@@ -57,6 +57,9 @@ class Crystal {
   final String effectDuration;
   final Map<String, dynamic> birthChartAlignment;
   final List<String> keywords;
+  
+  // Convenience getter for backward compatibility
+  List<String> get intentions => recommendedIntentions;
 
   Crystal({
     required this.id,

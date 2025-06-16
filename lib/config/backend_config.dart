@@ -14,23 +14,20 @@ class BackendConfig {
     
     return _isProduction 
       ? 'https://crystalgrimoire-production.web.app/api'
-      : 'http://localhost:8081/api';
+      : 'http://localhost:5001/crystalgrimoire-production/us-central1/api';
   }
   
-  // Use backend API if available, otherwise use direct AI
-  static const bool useBackend = false; // Temporarily disabled for deployment
+  // Use backend API - now enabled by default
+  static const bool useBackend = true;
   
   // Environment-based backend forcing
   static bool get forceBackendIntegration => 
     const bool.fromEnvironment('FORCE_BACKEND', defaultValue: false);
   
   // API Endpoints
-  static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
-  static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
-  // Old endpoints, potentially to be removed or refactored if CollectionEntry is fully deprecated
-  static const String oldCollectionEndpoint = '/crystal/collection';
-  static const String oldSaveEndpoint = '/crystal/save';
-  static const String usageEndpoint = '/usage';
+  static const String identifyEndpoint = '/crystal/identify';
+  static const String crystalsEndpoint = '/crystals';
+  static const String guidanceEndpoint = '/guidance/personalized';
   
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);
@@ -39,7 +36,7 @@ class BackendConfig {
   // Headers
   static Map<String, String> get headers => {
     'Accept': 'application/json',
-    // Add auth headers when implemented
+    'Content-Type': 'application/json',
   };
   
   // Check if backend is available
@@ -47,7 +44,7 @@ class BackendConfig {
     if (!useBackend) return false;
     
     try {
-      final healthUrl = baseUrl.replaceAll('/api', '/health');
+      final healthUrl = baseUrl.replaceAll('/api', '') + '/health';
       final response = await http.get(
         Uri.parse(healthUrl),
         headers: headers,
@@ -65,15 +62,11 @@ class BackendConfig {
     return {
       'base_url': baseUrl,
       'is_production': _isProduction,
-      'custom_backend_url': _customBackendUrl.isNotEmpty ? 'configured' : 'not_set',
       'use_backend': useBackend,
-      'force_backend': forceBackendIntegration,
       'endpoints': {
         'identify': '$baseUrl$identifyEndpoint',
         'crystals': '$baseUrl$crystalsEndpoint',
-        'old_collection': '$baseUrl$oldCollectionEndpoint',
-        'old_save': '$baseUrl$oldSaveEndpoint',
-        'usage': '$baseUrl$usageEndpoint',
+        'guidance': '$baseUrl$guidanceEndpoint',
       }
     };
   }
