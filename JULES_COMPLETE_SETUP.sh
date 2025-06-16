@@ -6,10 +6,11 @@
 echo "🔮 CRYSTAL GRIMOIRE V3 PRODUCTION - COMPLETE SETUP FOR JULES 🔮"
 echo "============================================================"
 
-# Step 1: Clone the repository
-echo "📥 Step 1: Cloning repository..."
+# Step 1: Clone the repository and checkout shared-core branch
+echo "📥 Step 1: Cloning repository and switching to shared-core branch..."
 git clone https://github.com/Domusgpt/crystal-grimoire-v3-production.git
 cd crystal-grimoire-v3-production
+git checkout shared-core
 
 # Step 2: Install Flutter (if not already installed)
 echo "🎯 Step 2: Checking Flutter installation..."
