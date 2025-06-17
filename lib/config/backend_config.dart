@@ -25,10 +25,11 @@ class BackendConfig {
     const bool.fromEnvironment('FORCE_BACKEND', defaultValue: false);
   
   // API Endpoints
-  static const String identifyEndpoint = '/crystal/identify';
-  static const String crystalsEndpoint = '/crystals';
+  static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
+  static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
   static const String guidanceEndpoint = '/guidance/personalized';
   static const String journalsEndpoint = '/journals'; // Added
+  static const String usageEndpoint = '/usage'; // Kept for now, may need review
   
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);
@@ -70,6 +71,7 @@ class BackendConfig {
         'crystals': '$baseUrl$crystalsEndpoint',
         'guidance': '$baseUrl$guidanceEndpoint',
         'journals': '$baseUrl$journalsEndpoint', // Added
+        'usage': '$baseUrl$usageEndpoint', // Kept for now
       }
     };
   }
