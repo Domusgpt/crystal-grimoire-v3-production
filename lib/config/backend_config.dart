@@ -28,6 +28,7 @@ class BackendConfig {
   static const String identifyEndpoint = '/crystal/identify';
   static const String crystalsEndpoint = '/crystals';
   static const String guidanceEndpoint = '/guidance/personalized';
+  static const String journalsEndpoint = '/journals'; // Added
   
   // Timeouts
   static const Duration apiTimeout = Duration(seconds: 30);
@@ -44,7 +45,8 @@ class BackendConfig {
     if (!useBackend) return false;
     
     try {
-      final healthUrl = baseUrl.replaceAll('/api', '') + '/health';
+      // The health endpoint is relative to the baseUrl of the API
+      final healthUrl = '$baseUrl/health';
       final response = await http.get(
         Uri.parse(healthUrl),
         headers: headers,
@@ -67,6 +69,7 @@ class BackendConfig {
         'identify': '$baseUrl$identifyEndpoint',
         'crystals': '$baseUrl$crystalsEndpoint',
         'guidance': '$baseUrl$guidanceEndpoint',
+        'journals': '$baseUrl$journalsEndpoint', // Added
       }
     };
   }
