@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'crystal.dart';
 
 // Corresponds to Pydantic model: VisualAnalysis
 class VisualAnalysis {
@@ -366,4 +367,34 @@ class UnifiedCrystalData {
       automaticEnrichment: automaticEnrichment ?? this.automaticEnrichment,
     );
   }
+
+  // Convenience getters for backward compatibility
+  String get id => crystalCore.id;
+  String get name => crystalCore.identification.stoneType;
+  EnergyMapping get metaphysicalProperties => crystalCore.energyMapping;
+  double get confidence => crystalCore.confidenceScore;
+  int get usageCount => userIntegration?.personalRating ?? 0;
+  List<String> get intentions => userIntegration?.intentionSettings ?? [];
+  
+  // Legacy Crystal-like properties for compatibility
+  List<String> get chakras => crystalCore.energyMapping.primaryChakras;
+  List<String> get healingProperties => automaticEnrichment?.healingProperties ?? [];
+  String get description => automaticEnrichment?.crystalBibleReference ?? '';
+  
+  // Create a legacy Crystal object for backward compatibility
+  Crystal get crystal => Crystal(
+    id: crystalCore.id,
+    name: crystalCore.identification.stoneType,
+    scientificName: crystalCore.identification.variety ?? '',
+    group: crystalCore.identification.crystalFamily,
+    description: automaticEnrichment?.crystalBibleReference ?? '',
+    chakras: crystalCore.energyMapping.primaryChakras,
+    elements: crystalCore.astrologicalData.elementalAlignment,
+    properties: {
+      'healing': automaticEnrichment?.healingProperties ?? [],
+      'usage': automaticEnrichment?.usageSuggestions ?? [],
+      'care': automaticEnrichment?.careInstructions ?? [],
+    },
+    careInstructions: (automaticEnrichment?.careInstructions ?? []).join(', '),
+  );
 }

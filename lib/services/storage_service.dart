@@ -13,6 +13,7 @@ class StorageService {
   static const String _queryDateKey = 'query_date';
   static const String _userProfileKey = 'user_profile';
   static const String _adMetricsKey = 'ad_metrics';
+  static const String _scheduledRitualsKey = 'scheduled_rituals'; // Added key
   
   bool _isInitialized = false;
   
@@ -277,6 +278,74 @@ class StorageService {
     }
     
     return metrics;
+  }
+
+  // Scheduled Rituals
+  static Future<void> saveScheduledRituals(List<ScheduledRitual> rituals) async {
+    final prefs = await SharedPreferences.getInstance();
+    // Need to import 'package:crystal_grimoire/models/scheduled_ritual.dart'; for ScheduledRitual
+    // Assuming it will be available in the scope where this service is used or via an import at the top of the file.
+    // For now, the type check might complain here if the import is not added by a prior step.
+    final List<String> ritualsJson = rituals.map((r) => json.encode(r.toJson())).toList();
+    await prefs.setStringList(_scheduledRitualsKey, ritualsJson);
+  }
+
+  static Future<List<ScheduledRitual>> loadScheduledRituals() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? ritualsJson = prefs.getStringList(_scheduledRitualsKey);
+    if (ritualsJson == null) {
+      return [];
+    }
+    // Same assumption about ScheduledRitual import as above.
+    return ritualsJson.map((r) => ScheduledRitual.fromJson(json.decode(r) as Map<String, dynamic>)).toList();
+  }
+
+  // --- UserProfile specific updaters ---
+
+  /// Updates only the spiritual preferences part of the UserProfile.
+  static Future<UserProfile> updateSpiritualPreferences(Map<String, dynamic> newPrefs) async {
+    // Non-static loadUserProfile must be used if _cachedProfile is involved,
+    // or make these methods non-static too.
+    // For now, assuming direct load/save for static context.
+    final prefs = await SharedPreferences.getInstance();
+    final profileString = prefs.getString(_userProfileKey);
+    UserProfile currentProfile;
+
+    if (profileString != null) {
+      currentProfile = UserProfile.fromJson(json.decode(profileString));
+    } else {
+      currentProfile = UserProfile.createDefault(); // Or throw Exception("No profile to update")
+    }
+
+    // Create a new map from existing, then add new ones (overwriting if keys match)
+    final updatedPrefs = Map<String, dynamic>.from(currentProfile.spiritualPreferences)..addAll(newPrefs);
+
+    final UserProfile updatedProfile = currentProfile.copyWith(spiritualPreferences: updatedPrefs);
+
+    await prefs.setString(_userProfileKey, json.encode(updatedProfile.toJson()));
+    // If using a cached profile in an instance version of StorageService, update it:
+    // _cachedProfile = updatedProfile;
+    return updatedProfile;
+  }
+
+  /// Updates only the birth chart information of the UserProfile.
+  static Future<UserProfile> updateBirthChartInfo(BirthChart newChart) async {
+    final prefs = await SharedPreferences.getInstance();
+    final profileString = prefs.getString(_userProfileKey);
+    UserProfile currentProfile;
+
+    if (profileString != null) {
+      currentProfile = UserProfile.fromJson(json.decode(profileString));
+    } else {
+      // Decide if a profile should be created or an error thrown
+      currentProfile = UserProfile.createDefault();
+      // Or: throw Exception("Cannot update birth chart for a non-existent profile.");
+    }
+
+    final UserProfile updatedProfile = currentProfile.copyWith(birthChart: newChart);
+
+    await prefs.setString(_userProfileKey, json.encode(updatedProfile.toJson()));
+    return updatedProfile;
   }
   
 }

@@ -225,7 +225,7 @@ class CollectionStats {
   final Map<String, int> crystalsByPurpose; // Purpose -> count
   final List<String> mostUsedCrystals; // Top 5 by usage
   final List<String> favoriteCrystals; // User favorites
-  final Map<String, double> effectivenessRatings; // Crystal -> avg mood improvement
+  // final Map<String, double> effectivenessRatings; // Crystal -> avg mood improvement - REMOVED for this task
   final DateTime lastUpdated;
 
   CollectionStats({
@@ -235,26 +235,36 @@ class CollectionStats {
     required this.crystalsByPurpose,
     required this.mostUsedCrystals,
     required this.favoriteCrystals,
-    required this.effectivenessRatings,
+    // required this.effectivenessRatings, // REMOVED
     required this.lastUpdated,
   });
 
   /// Generate stats from collection
-  factory CollectionStats.fromCollection(List<UnifiedCrystalData> unifiedCollection, List<UsageLog> logs) {
+  factory CollectionStats.fromCollection(List<CollectionEntry> entries) { // Changed signature
     final crystalsByType = <String, int>{};
     final crystalsByChakra = <String, int>{};
     final crystalsByPurpose = <String, int>{};
-    // final usageCount = <String, int>{}; // Usage count is not directly on UnifiedCrystalData
-    // final favorites = <String>[]; // isFavorite is not directly on UnifiedCrystalData
-    final effectiveness = <String, List<double>>{};
 
-    // Analyze collection
-    for (final ucd in unifiedCollection) {
+    List<CollectionEntry> sortedByUsage = List.from(entries);
+    sortedByUsage.sort((a, b) => b.usageCount.compareTo(a.usageCount));
+    final mostUsedCrystals = sortedByUsage
+        .take(5)
+        .map((e) => e.crystalData.name) // Assuming name is on crystalData or crystalData.crystalCore.identification.stoneType
+        .toList();
+
+    final favoriteCrystals = entries
+        .where((e) => e.isFavorite)
+        .take(5) // take top 5 or all if less than 5
+        .map((e) => e.crystalData.name)
+        .toList();
+
+    // Analyze collection entries
+    for (final entry in entries) {
+      final ucd = entry.crystalData; // UnifiedCrystalData from CollectionEntry
       final core = ucd.crystalCore;
       final identification = core.identification;
       final energy = core.energyMapping;
       final enrichment = ucd.automaticEnrichment;
-      // final userIntegration = ucd.userIntegration; // For future use with isFavorite, usageCount
 
       // Count by type (using crystalFamily as "group/type")
       final type = identification.crystalFamily;
@@ -289,62 +299,17 @@ class CollectionStats {
       //   usageCount[identification.stoneType] = userIntegration!.usageCount!;
       // }
 
-      // Track favorites - Not available on UnifiedCrystalData directly
-      // if (userIntegration?.isFavorite == true && identification.stoneType.isNotEmpty) {
-      //   favorites.add(identification.stoneType);
-      // }
     }
-
-    // Analyze usage logs for effectiveness
-    for (final log in logs) {
-      if (log.moodBefore != null && log.moodAfter != null) {
-        // Find the corresponding UnifiedCrystalData using collectionEntryId which should match UCD.crystalCore.id
-        final ucdEntry = unifiedCollection.firstWhere(
-          (ucd) => ucd.crystalCore.id == log.collectionEntryId,
-          orElse: () {
-            debugPrint("CollectionStats: UsageLog with id ${log.id} refers to collectionEntryId ${log.collectionEntryId} not found in unifiedCollection.");
-            // Return a dummy UnifiedCrystalData to prevent crash. This is not ideal.
-            // A better approach would be to filter out such logs or handle them gracefully.
-            return UnifiedCrystalData.empty(); // Assuming an empty static constructor
-          }
-        );
-
-        if (ucdEntry.crystalCore.id.isEmpty) continue; // Skip if dummy/empty UCD was returned
-
-        final crystalName = ucdEntry.crystalCore.identification.stoneType;
-        if (crystalName.isNotEmpty) {
-          final improvement = (log.moodAfter! - log.moodBefore!).toDouble();
-          effectiveness.putIfAbsent(crystalName, () => []).add(improvement);
-        }
-      }
-    }
-
-    // Calculate average effectiveness
-    final effectivenessRatings = <String, double>{};
-    effectiveness.forEach((crystal, improvements) {
-      if (improvements.isNotEmpty) {
-        effectivenessRatings[crystal] = improvements.reduce((a, b) => a + b) / improvements.length;
-      }
-    });
-
-    // Get most used crystals - Cannot be reliably determined without usageCount on UnifiedCrystalData
-    // For now, returning empty list.
-    final mostUsed = <String>[];
-    // final sortedByUsage = usageCount.entries.toList()
-    //   ..sort((a, b) => b.value.compareTo(a.value));
-    // final mostUsed = sortedByUsage.take(5).map((e) => e.key).toList();
-
-    // Favorite crystals - Cannot be reliably determined without isFavorite on UnifiedCrystalData
-    final favorites = <String>[];
+    // Effectiveness ratings and direct UsageLog processing removed as per subtask.
 
     return CollectionStats(
-      totalCrystals: unifiedCollection.length,
+      totalCrystals: entries.length,
       crystalsByType: crystalsByType,
       crystalsByChakra: crystalsByChakra,
       crystalsByPurpose: crystalsByPurpose,
-      mostUsedCrystals: mostUsed, // Empty for now
-      favoriteCrystals: favorites, // Empty for now
-      effectivenessRatings: effectivenessRatings,
+      mostUsedCrystals: mostUsedCrystals,
+      favoriteCrystals: favoriteCrystals,
+      // effectivenessRatings: {}, // Removed
       lastUpdated: DateTime.now(),
     );
   }
@@ -357,10 +322,11 @@ class CollectionStats {
       'chakraCoverage': crystalsByChakra,
       'primaryPurposes': crystalsByPurpose,
       'favorites': favoriteCrystals,
-      'mostEffective': effectivenessRatings.entries
-          .where((e) => e.value > 0)
-          .map((e) => '${e.key} (+${e.value.toStringAsFixed(1)} mood)')
-          .toList(),
+      'mostUsed': mostUsedCrystals, // Added mostUsedCrystals to context
+      // 'mostEffective': effectivenessRatings.entries // Removed
+      //     .where((e) => e.value > 0)
+      //     .map((e) => '${e.key} (+${e.value.toStringAsFixed(1)} mood)')
+      //     .toList(),
       'gaps': _identifyCollectionGaps(),
     };
   }

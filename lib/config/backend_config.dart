@@ -14,11 +14,11 @@ class BackendConfig {
     
     return _isProduction 
       ? 'https://crystalgrimoire-production.web.app/api'
-      : 'http://localhost:8081/api';
+      : 'http://localhost:5001/crystalgrimoire-production/us-central1/api';
   }
   
-  // Use backend API if available, otherwise use direct AI
-  static const bool useBackend = true; // Enabled - unified backend integrated
+  // Use backend API - now enabled by default
+  static const bool useBackend = true;
   
   // Environment-based backend forcing
   static bool get forceBackendIntegration => 
@@ -27,8 +27,8 @@ class BackendConfig {
   // API Endpoints
   static const String identifyEndpoint = '/crystal/identify'; // POST for UnifiedCrystalData
   static const String crystalsEndpoint = '/crystals'; // Base for CRUD UnifiedCrystalData
-  // static const String oldCollectionEndpoint = '/crystal/collection'; // Removed
-  // static const String oldSaveEndpoint = '/crystal/save'; // Removed
+  static const String guidanceEndpoint = '/guidance/personalized';
+  static const String journalsEndpoint = '/journals'; // Added
   static const String usageEndpoint = '/usage'; // Kept for now, may need review
   
   // Timeouts
@@ -38,7 +38,7 @@ class BackendConfig {
   // Headers
   static Map<String, String> get headers => {
     'Accept': 'application/json',
-    // Add auth headers when implemented
+    'Content-Type': 'application/json',
   };
   
   // Check if backend is available
@@ -46,7 +46,8 @@ class BackendConfig {
     if (!useBackend) return false;
     
     try {
-      final healthUrl = baseUrl.replaceAll('/api', '/health');
+      // The health endpoint is relative to the baseUrl of the API
+      final healthUrl = '$baseUrl/health';
       final response = await http.get(
         Uri.parse(healthUrl),
         headers: headers,
@@ -64,14 +65,12 @@ class BackendConfig {
     return {
       'base_url': baseUrl,
       'is_production': _isProduction,
-      'custom_backend_url': _customBackendUrl.isNotEmpty ? 'configured' : 'not_set',
       'use_backend': useBackend,
-      'force_backend': forceBackendIntegration,
       'endpoints': {
         'identify': '$baseUrl$identifyEndpoint',
         'crystals': '$baseUrl$crystalsEndpoint',
-        // 'old_collection': '$baseUrl$oldCollectionEndpoint', // Removed
-        // 'old_save': '$baseUrl$oldSaveEndpoint', // Removed
+        'guidance': '$baseUrl$guidanceEndpoint',
+        'journals': '$baseUrl$journalsEndpoint', // Added
         'usage': '$baseUrl$usageEndpoint', // Kept for now
       }
     };

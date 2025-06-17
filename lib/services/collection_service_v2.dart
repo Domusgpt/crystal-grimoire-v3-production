@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/crystal.dart'; // May still be used if methods construct UnifiedCrystalData from it
 import '../models/unified_crystal_data.dart';
 import '../models/collection_models.dart';
+import '../models/journal_entry.dart'; // Added import for JournalEntry
 import 'backend_service.dart'; // May not be directly used if all calls go via UnifiedDataService
 import 'firebase_service.dart'; // May still be used for non-crystal things or auth status
 import 'unified_data_service.dart';
@@ -16,6 +17,7 @@ class CollectionServiceV2 extends ChangeNotifier {
   static const String _usageLogsKey = 'crystal_usage_logs_v2';
   
   final UnifiedDataService _unifiedDataService; // Primary source for crystal data
+  final BackendService _backendService; // Added for journal operations
   final FirebaseService? _firebaseService; // For other operations or auth status
   
   List<UnifiedCrystalData> _collection = []; // Changed type
@@ -26,8 +28,10 @@ class CollectionServiceV2 extends ChangeNotifier {
   
   CollectionServiceV2({
     required UnifiedDataService unifiedDataService,
+    required BackendService backendService, // Added
     FirebaseService? firebaseService, // Keep if needed for other things
   }) : _unifiedDataService = unifiedDataService,
+       _backendService = backendService, // Added
        _firebaseService = firebaseService {
     // Listen to UnifiedDataService for changes to the crystal collection
     _unifiedDataService.addListener(_onUnifiedDataServiceChanged);
@@ -376,5 +380,87 @@ class CollectionServiceV2 extends ChangeNotifier {
   void dispose() {
     _unifiedDataService.removeListener(_onUnifiedDataServiceChanged);
     super.dispose();
+  }
+
+  // Journal Entry Stubs
+  Future<List<JournalEntry>> loadJournalEntries() async {
+    try {
+      final List<dynamic> responseData = await _backendService.getJournalEntries();
+      return responseData.map((data) => JournalEntry.fromJson(data as Map<String, dynamic>)).toList();
+    } catch (e) {
+      debugPrint("Error loading journal entries in CollectionServiceV2: $e");
+      // Optionally set _lastError and notifyListeners if this service manages global error state
+      // For now, rethrow to let UI handle specific errors.
+      throw Exception('Failed to load journal entries: $e');
+    }
+  }
+
+  Future<void> saveJournalEntry(JournalEntry entry) async {
+    try {
+      // Assuming backend returns the saved entry, possibly with a server-generated ID or timestamps
+      // If backend returns the created entry, we could do:
+      // final Map<String, dynamic> responseData = await _backendService.saveJournalEntry(entry.toJson());
+      // return JournalEntry.fromJson(responseData); // If method signature was Future<JournalEntry>
+      await _backendService.saveJournalEntry(entry.toJson());
+      // No return needed for Future<void>
+    } catch (e) {
+      debugPrint("Error saving journal entry in CollectionServiceV2: $e");
+      throw Exception('Failed to save journal entry: $e');
+    }
+  }
+
+  Future<void> deleteJournalEntry(String entryId) async {
+    try {
+      await _backendService.deleteJournalEntry(entryId);
+    } catch (e) {
+      debugPrint("Error deleting journal entry in CollectionServiceV2: $e");
+      throw Exception('Failed to delete journal entry: $e');
+    }
+  }
+
+  Future<JournalEntry> updateJournalEntry(JournalEntry entry) async {
+    try {
+      final Map<String, dynamic> responseData = await _backendService.updateJournalEntry(entry.id, entry.toJson());
+      return JournalEntry.fromJson(responseData);
+    } catch (e) {
+      debugPrint("Error updating journal entry in CollectionServiceV2: $e");
+      throw Exception('Failed to update journal entry: $e');
+    }
+  }
+
+  Future<List<CollectionEntry>> loadUserOwnedCrystals() async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    debugPrint("loadUserOwnedCrystals called (stub) - returning sample CollectionEntry list");
+    // This uses the CollectionEntry model from lib/models/collection_models.dart
+    return [
+      CollectionEntry(
+        id: 'owned_amethyst_001', // This is CollectionEntry's own ID in the user's collection
+        crystalId: 'amethyst_crystal_type_id', // This refers to the general crystal type ID
+        name: 'Amethyst (Stub)',
+        addedDate: DateTime.now().subtract(const Duration(days: 10)),
+        properties: {'color': 'Purple', 'source': 'Stubland', 'size': 'Medium'}
+      ),
+      CollectionEntry(
+        id: 'owned_citrine_002',
+        crystalId: 'citrine_crystal_type_id',
+        name: 'Citrine (Stub)',
+        addedDate: DateTime.now().subtract(const Duration(days: 5)),
+        properties: {'color': 'Yellow', 'source': 'Stubville', 'size': 'Small'}
+      ),
+      CollectionEntry(
+        id: 'owned_rosequartz_003',
+        crystalId: 'rosequartz_crystal_type_id',
+        name: 'Rose Quartz (Stub)',
+        addedDate: DateTime.now().subtract(const Duration(days: 20)),
+        properties: {'color': 'Pink', 'source': 'Stubtopia', 'size': 'Large'}
+      ),
+       CollectionEntry(
+        id: 'owned_clearquartz_004',
+        crystalId: 'clearquartz_crystal_type_id',
+        name: 'Clear Quartz (Stub)',
+        addedDate: DateTime.now().subtract(const Duration(days: 2)),
+        properties: {'color': 'Clear', 'source': 'Stublantis', 'size': 'Medium'}
+      ),
+    ];
   }
 }

@@ -4,6 +4,11 @@ import 'dart:ui';
 import '../services/app_state.dart';
 import '../services/collection_service_v2.dart';
 import 'package:provider/provider.dart';
+import '../models/user_profile.dart';
+import '../models/scheduled_ritual.dart'; // Added
+import '../services/storage_service.dart'; // Added
+import 'package:intl/intl.dart'; // Added
+import '../widgets/common/mystical_card.dart'; // Assuming this exists for styling scheduled rituals
 
 class MoonRitualScreen extends StatefulWidget {
   const MoonRitualScreen({Key? key}) : super(key: key);
@@ -15,6 +20,8 @@ class MoonRitualScreen extends StatefulWidget {
 class _MoonRitualScreenState extends State<MoonRitualScreen> {
   String selectedPhase = 'Waxing Crescent';
   List<String> recommendedCrystals = [];
+  List<ScheduledRitual> _scheduledRituals = []; // Added
+  bool _isLoadingRituals = true; // Added
   
   final Map<String, Map<String, dynamic>> moonPhaseData = {
     'New Moon': {
@@ -71,6 +78,19 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
   void initState() {
     super.initState();
     _updateRecommendedCrystals();
+    _loadScheduledRitualsFromStorage(); // Added
+  }
+
+  Future<void> _loadScheduledRitualsFromStorage() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingRituals = true;
+    });
+    _scheduledRituals = await StorageService.loadScheduledRituals();
+    if (!mounted) return;
+    setState(() {
+      _isLoadingRituals = false;
+    });
   }
 
   void _updateRecommendedCrystals() {
@@ -86,6 +106,103 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProfile = Provider.of<UserProfile>(context);
+    final theme = Theme.of(context); // Get theme for paywall consistency
+
+    if (!userProfile.hasAccessTo('moon_rituals')) {
+      // Using a paywall structure similar to JournalScreen
+      return Scaffold(
+        backgroundColor: theme.colorScheme.background,
+        appBar: AppBar(
+          title: Text(
+            'Moon Rituals',
+            style: GoogleFonts.cinzel(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onBackground,
+            ),
+          ),
+          backgroundColor: theme.colorScheme.background,
+          elevation: 0,
+          iconTheme: IconThemeData(color: theme.colorScheme.onBackground),
+        ),
+        body: Stack( // Using Stack to allow potential background effects like FloatingParticles
+          children: [
+            Container( // Background gradient consistent with the screen's theme
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF0A0015), // Dark top
+                    Color(0xFF1A0B2E), // Mid
+                    Color(0xFF2D1B69), // Lighter bottom (matching screen's active theme)
+                  ],
+                ),
+              ),
+            ),
+            // Optional: Add FloatingParticles if desired, like in JournalScreen
+            // const FloatingParticles(particleCount: 15, color: Colors.purpleAccent),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: MysticalCard( // Using MysticalCard for consistent themed container
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.nightlight_round, // Icon related to Moon Rituals
+                          size: 48,
+                          color: theme.colorScheme.primary,
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Unlock Moon Rituals',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'This is a Pro feature. Please upgrade your subscription to unlock this mystical journey and align with lunar energies.',
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            color: theme.colorScheme.onSurface.withOpacity(0.8),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        ElevatedButton.icon( // Using ElevatedButton for now, can be MysticalButton
+                          icon: const Icon(Icons.star_border_purple500_sharp),
+                          label: const Text('Upgrade to Pro'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.colorScheme.primary,
+                            foregroundColor: theme.colorScheme.onPrimary,
+                            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
+                            textStyle: theme.textTheme.titleMedium,
+                          ),
+                          onPressed: () {
+                            // TODO: Navigate to subscription page
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Navigate to subscription page (Not Implemented)')),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
@@ -162,6 +279,11 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
                   
                   // Schedule ritual button
                   _buildScheduleButton(),
+
+                  const SizedBox(height: 32), // Spacing before the list
+
+                  // Display Scheduled Rituals
+                  _buildScheduledRitualsList(),
                 ],
               ),
             ),
@@ -509,16 +631,52 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Ritual scheduled for $selectedPhase!',
-                  style: GoogleFonts.poppins(),
-                ),
-                backgroundColor: const Color(0xFF6366F1),
-              ),
+          onTap: () async {
+            final DateTime? pickedDate = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime.now().add(const Duration(days: 365)), // Allow scheduling for up to a year
+              builder: (context, child) { // Optional: Theming the date picker
+                return Theme(
+                  data: ThemeData.dark().copyWith(
+                    colorScheme: ColorScheme.dark(
+                      primary: const Color(0xFF6366F1), // Header background
+                      onPrimary: Colors.white, // Header text
+                      onSurface: Colors.white70, // Body text
+                    ),
+                    dialogBackgroundColor: const Color(0xFF1A0B2E),
+                  ),
+                  child: child!,
+                );
+              },
             );
+
+            if (pickedDate != null) {
+              final ritualName = moonPhaseData[selectedPhase]?['ritual'] as String? ?? 'Moon Ritual';
+              final newRitual = ScheduledRitual(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                moonPhase: selectedPhase,
+                ritualName: ritualName,
+                scheduledDate: pickedDate,
+              );
+
+              _scheduledRituals.add(newRitual);
+              await StorageService.saveScheduledRituals(_scheduledRituals);
+
+              if(mounted) {
+                setState(() {}); // Refresh UI to show the new ritual in the list
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      '${newRitual.ritualName} scheduled for ${DateFormat('yyyy-MM-dd').format(pickedDate)}!',
+                      style: GoogleFonts.poppins(),
+                    ),
+                    backgroundColor: const Color(0xFF6366F1),
+                  ),
+                );
+              }
+            }
           },
           borderRadius: BorderRadius.circular(16),
           child: Center(
@@ -543,6 +701,125 @@ class _MoonRitualScreenState extends State<MoonRitualScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildScheduledRitualsList() {
+    if (_isLoadingRituals) {
+      return const Center(child: CircularProgressIndicator(color: Colors.white));
+    }
+
+    final theme = Theme.of(context); // For text styles
+
+    if (_scheduledRituals.isEmpty) {
+      return Center(
+        child: Column( // Added Column for Icon + Text
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.calendar_today_outlined, size: 48, color: Colors.white.withOpacity(0.5)),
+            const SizedBox(height: 16),
+            Text(
+              'No rituals scheduled yet.',
+              style: theme.textTheme.titleMedium?.copyWith(color: Colors.white.withOpacity(0.7)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Your Scheduled Rituals',
+          style: GoogleFonts.cinzel(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: _scheduledRituals.length,
+          itemBuilder: (context, index) {
+            final ritual = _scheduledRituals[index];
+            TextStyle titleStyle = GoogleFonts.poppins(
+              fontWeight: FontWeight.w600,
+              color: ritual.isCompleted ? Colors.white.withOpacity(0.5) : Colors.white,
+              decoration: ritual.isCompleted ? TextDecoration.lineThrough : null,
+            );
+            TextStyle subtitleStyle = GoogleFonts.poppins(
+              color: ritual.isCompleted ? Colors.white.withOpacity(0.4) : Colors.white70,
+              decoration: ritual.isCompleted ? TextDecoration.lineThrough : null,
+            );
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: MysticalCard(
+                child: CheckboxListTile(
+                  title: Text(ritual.ritualName, style: titleStyle),
+                  subtitle: Text(
+                    '${ritual.moonPhase} - ${DateFormat('EEE, MMM d, yyyy').format(ritual.scheduledDate)}',
+                    style: subtitleStyle,
+                  ),
+                  value: ritual.isCompleted,
+                  onChanged: (bool? newValue) async {
+                    if (newValue == null) return;
+                    setState(() {
+                      ritual.isCompleted = newValue;
+                    });
+                    await StorageService.saveScheduledRituals(_scheduledRituals);
+                    // Optionally, show a snackbar or confirmation
+                  },
+                  activeColor: theme.colorScheme.primary.withOpacity(0.7),
+                  checkColor: Colors.white,
+                  secondary: IconButton(
+                    icon: Icon(Icons.delete_outline, color: Colors.redAccent.withOpacity(0.7)),
+                    tooltip: "Delete Ritual",
+                    onPressed: () async {
+                      final bool? confirmDelete = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: const Text('Confirm Delete'),
+                            content: Text('Are you sure you want to delete the ritual "${ritual.ritualName}"?'),
+                            actions: <Widget>[
+                              TextButton(
+                                child: const Text('Cancel'),
+                                onPressed: () => Navigator.of(context).pop(false),
+                              ),
+                              TextButton(
+                                child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                                onPressed: () => Navigator.of(context).pop(true),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirmDelete == true) {
+                        _scheduledRituals.removeWhere((r) => r.id == ritual.id);
+                        await StorageService.saveScheduledRituals(_scheduledRituals);
+                        if(mounted) setState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('${ritual.ritualName} removed.', style: GoogleFonts.poppins()),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading, // Checkbox on the left
+                  tileColor: ritual.isCompleted ? Colors.white.withOpacity(0.05) : Colors.transparent,
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
