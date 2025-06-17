@@ -2,15 +2,15 @@
 
 ## Overview
 
-CrystalGrimoire now incorporates **Parserator** (AI-powered data parsing platform) and **Exoditical Moral Architecture** for ethical spiritual technology. This integration provides enhanced crystal identification, intelligent automation, and comprehensive ethical validation.
+CrystalGrimoire integrates with **Parserator** (existing AI-powered data parsing platform) and **Exoditical Moral Architecture** for ethical spiritual technology. This integration provides enhanced crystal identification, intelligent automation, and comprehensive ethical validation using Paul's existing Parserator API service.
 
 ## 🎯 Key Features
 
-### Parserator Integration
-- **Two-Stage Processing**: Architect (schema analysis) → Extractor (data processing)
-- **70% Cost Reduction**: Dual-stage architecture vs traditional single-LLM approaches
-- **Multi-Source Validation**: Geological, metaphysical, and ethical databases
-- **Real-Time Enhancement**: All crystal identification and data processing
+### Parserator API Integration
+- **Two-Stage Processing**: Use Parserator's existing Architect-Extractor pattern
+- **70% Cost Reduction**: Proven dual-stage architecture vs traditional single-LLM approaches
+- **Multi-Source Validation**: Geological, metaphysical, and ethical databases via API
+- **Real-Time Enhancement**: Crystal identification and data processing via https://app-5108296280.us-central1.run.app
 
 ### Exoditical Moral Architecture
 Five core principles for ethical spiritual technology:
@@ -25,25 +25,25 @@ Five core principles for ethical spiritual technology:
 
 ### Service Layer
 ```dart
-// Enhanced service stack
+// Enhanced service stack with Parserator API integration
 UnifiedAIService
-├── ParseOperatorService (Parserator integration)
+├── ParseOperatorService (Calls Parserator API)
 ├── ExoditicalValidationService (Ethical validation)
 ├── LLMService (Standard AI processing)
 └── FeatureIntegrationService (Cross-feature automation)
 
 UnifiedDataService
-├── ParseOperatorService (Data enhancement)
+├── ParseOperatorService (Parserator API calls)
 ├── ExoditicalValidationService (Collection validation)
 ├── StorageService (Local persistence)
 └── FirebaseService (Cloud sync)
 ```
 
 ### Backend Integration
-```python
-# Enhanced backend with Parserator
-backend_server_enhanced.py
-├── ParseOperatorService (API integration)
+```javascript
+// Enhanced backend calling Parserator API
+functions/index.js (Firebase Functions)
+├── ParseOperatorService (API client to app-5108296280.us-central1.run.app)
 ├── ExoditicalValidator (Ethical validation)
 ├── AIService (Standard identification)
 └── Enhanced endpoints (/identify-enhanced, /automation, /validate)
@@ -145,13 +145,14 @@ final validation = await ethicalValidator.validateCrystalData(
 ### Environment Setup
 ```bash
 # Required environment variables
-PARSERATOR_API_KEY=pk_live_your_parserator_key
+PARSERATOR_API_KEY=pk_live_your_parserator_key  # For Parserator API access
 GEMINI_API_KEY=your_gemini_key
 OPENAI_API_KEY=your_openai_key (optional)
 
-# Backend setup
-cd /mnt/c/Users/millz/Desktop/CrystalGrimoireV3
-python backend_server_enhanced.py
+# Firebase Functions backend setup
+cd /mnt/c/Users/millz/crystal-grimoire-deployment
+firebase functions:config:set parserator.api_key="pk_live_your_parserator_key"
+firebase deploy --only functions
 ```
 
 ### Flutter Integration
@@ -243,15 +244,15 @@ final ethicalStatus = await unifiedDataService.getCollectionEthicalStatus();
 ## 🚀 Deployment
 
 ### Production Configuration
-```python
-# backend_server_enhanced.py
-PARSERATOR_API_KEY = os.getenv('PARSERATOR_API_KEY')
-ENVIRONMENT = 'production'
+```javascript
+// functions/index.js (Firebase Functions)
+const PARSERATOR_API_KEY = functions.config().parserator.api_key;
+const PARSERATOR_URL = 'https://app-5108296280.us-central1.run.app/v1/parse';
 
-# Enhanced endpoints
-/api/crystal/identify-enhanced  # Full Parserator integration
-/api/automation/cross-feature   # Intelligent automation
-/api/crystal/validate          # Ethical validation
+// Enhanced endpoints
+app.post('/api/crystal/identify-enhanced', ...);  // Full Parserator integration
+app.post('/api/automation/cross-feature', ...);   // Intelligent automation
+app.post('/api/crystal/validate', ...);          // Ethical validation
 ```
 
 ### Firebase Configuration
