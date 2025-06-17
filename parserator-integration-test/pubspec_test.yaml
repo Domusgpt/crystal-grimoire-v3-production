@@ -1,0 +1,13 @@
+name: parserator_integration_test
+description: Test Parserator API integration for Crystal Grimoire
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  http: ^1.1.0
+
+dev_dependencies:
+  test: ^1.21.0

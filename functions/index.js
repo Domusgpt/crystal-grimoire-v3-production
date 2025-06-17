@@ -24,6 +24,7 @@ async function getUserId(request) {
 
 const functions = require('firebase-functions'); // Added for functions.config()
 const axios = require('axios'); // Required by UnifiedCrystalAI
+const ParseOperatorService = require('./parserator_service'); // Parserator integration
 
 // UNIFIED DATA MODEL - Automatable Mappings (Copied from unified_backend_server.js)
 const COLOR_CHAKRA_MAP = {
@@ -814,13 +815,178 @@ Please provide thoughtful, actionable, and empathetic guidance. If suggesting cr
     }
   // NOTE: The temporary '/api/crystal/unified-identify' route handler has been removed.
   // The old mock response within '/crystal/identify' has been replaced by the AI logic above.
+
+  // --- START PARSERATOR INTEGRATION ENDPOINTS ---
+  } else if (path === '/parserator/health' && request.method === 'GET') {
+    console.log("Request received for GET /parserator/health");
+    try {
+      const parserator = new ParseOperatorService();
+      const health = await parserator.checkHealth();
+      response.json(health);
+    } catch (error) {
+      console.error('Parserator health check error:', error);
+      response.status(500).json({ error: 'Parserator health check failed', details: error.message });
+    }
+
+  } else if (path === '/crystal/identify-enhanced' && request.method === 'POST') {
+    console.log("Request received for POST /crystal/identify-enhanced (with Parserator)");
+    const userId = await getUserId(request);
+    if (!userId) {
+      return response.status(401).json({ error: 'Unauthorized: No or invalid ID token provided.' });
+    }
+
+    const { image_data, user_profile, existing_collection } = request.body;
+
+    if (!image_data) {
+      return response.status(400).json({ error: 'Missing image_data' });
+    }
+
+    try {
+      // Get standard AI identification first
+      const aiService = new UnifiedCrystalAI();
+      const standardResult = await aiService.identifyCrystal(image_data, user_profile || {});
+      
+      // Enhance with Parserator
+      const parserator = new ParseOperatorService();
+      const enhancedResult = await parserator.enhanceCrystalData(
+        standardResult,
+        user_profile || {},
+        existing_collection || []
+      );
+
+      response.json({
+        success: true,
+        standard_identification: standardResult,
+        enhanced_data: enhancedResult,
+        enhancement_source: 'parserator',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Enhanced crystal identification error:', error);
+      response.status(500).json({ 
+        error: 'Enhanced identification failed', 
+        details: error.message,
+        fallback_available: true 
+      });
+    }
+
+  } else if (path === '/automation/cross-feature' && request.method === 'POST') {
+    console.log("Request received for POST /automation/cross-feature");
+    const userId = await getUserId(request);
+    if (!userId) {
+      return response.status(401).json({ error: 'Unauthorized: No or invalid ID token provided.' });
+    }
+
+    const { trigger_event, event_data, user_profile, context } = request.body;
+
+    if (!trigger_event || !event_data) {
+      return response.status(400).json({ error: 'Missing trigger_event or event_data' });
+    }
+
+    try {
+      const parserator = new ParseOperatorService();
+      const automationResult = await parserator.processCrossFeatureAutomation(
+        trigger_event,
+        event_data,
+        user_profile || {},
+        context || {}
+      );
+
+      response.json({
+        success: true,
+        automation_result: automationResult,
+        trigger_event,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Cross-feature automation error:', error);
+      response.status(500).json({ 
+        error: 'Automation processing failed', 
+        details: error.message 
+      });
+    }
+
+  } else if (path === '/crystal/validate' && request.method === 'POST') {
+    console.log("Request received for POST /crystal/validate");
+    const userId = await getUserId(request);
+    if (!userId) {
+      return response.status(401).json({ error: 'Unauthorized: No or invalid ID token provided.' });
+    }
+
+    const { crystal_data, validation_sources } = request.body;
+
+    if (!crystal_data) {
+      return response.status(400).json({ error: 'Missing crystal_data' });
+    }
+
+    try {
+      const parserator = new ParseOperatorService();
+      const validationResult = await parserator.validateCrystalData(
+        crystal_data,
+        validation_sources || ['geological', 'metaphysical', 'cultural']
+      );
+
+      response.json({
+        success: true,
+        validation_result: validationResult,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Crystal validation error:', error);
+      response.status(500).json({ 
+        error: 'Validation failed', 
+        details: error.message 
+      });
+    }
+
+  } else if (path === '/recommendations/personalized' && request.method === 'POST') {
+    console.log("Request received for POST /recommendations/personalized");
+    const userId = await getUserId(request);
+    if (!userId) {
+      return response.status(401).json({ error: 'Unauthorized: No or invalid ID token provided.' });
+    }
+
+    const { user_profile, collection } = request.body;
+
+    if (!user_profile) {
+      return response.status(400).json({ error: 'Missing user_profile' });
+    }
+
+    try {
+      const parserator = new ParseOperatorService();
+      const recommendations = await parserator.getPersonalizedRecommendations(
+        user_profile,
+        collection || []
+      );
+
+      response.json({
+        success: true,
+        recommendations,
+        user_profile: user_profile,
+        collection_size: (collection || []).length,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Personalized recommendations error:', error);
+      response.status(500).json({ 
+        error: 'Recommendations failed', 
+        details: error.message 
+      });
+    }
+  // --- END PARSERATOR INTEGRATION ENDPOINTS ---
+
   } else {
     // Default endpoint response for unmatched paths
     response.json({
-      message: "🔮 Crystal Grimoire V3 Professional API",
+      message: "🔮 Crystal Grimoire V3 Professional API with Parserator Integration",
       available_endpoints: [
         "GET /health - Health check",
         "POST /crystal/identify - AI Crystal Identification",
+        "POST /crystal/identify-enhanced - Enhanced identification with Parserator",
+        "POST /crystal/validate - Validate crystal data",
+        "POST /automation/cross-feature - Cross-feature automation",
+        "POST /recommendations/personalized - Personalized recommendations",
+        "GET /parserator/health - Parserator service health",
         "GET /crystals - List user's crystal collection",
         "POST /crystals - Add new crystal to collection",
         "PUT /crystals/:crystalId - Update crystal in collection",
@@ -831,7 +997,14 @@ Please provide thoughtful, actionable, and empathetic guidance. If suggesting cr
         "DELETE /journals/:entryId - Delete journal entry",
         "POST /guidance/personalized - Get personalized guidance"
       ],
-      version: "Professional v3.0"
+      version: "Professional v3.0 + Parserator",
+      parserator_features: [
+        "Two-stage Architect-Extractor pattern",
+        "70% cost reduction vs single-LLM",
+        "Multi-source validation",
+        "Cross-feature automation",
+        "Real-time enhancement"
+      ]
     });
   }
 });
