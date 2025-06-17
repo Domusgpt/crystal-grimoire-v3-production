@@ -815,76 +815,7 @@ Please provide thoughtful, actionable, and empathetic guidance. If suggesting cr
   // NOTE: The temporary '/api/crystal/unified-identify' route handler has been removed.
   // The old mock response within '/crystal/identify' has been replaced by the AI logic above.
   } else {
-    // Fallback for other paths or if the old /crystal/identify mock was here
-    const professionalResponse = { // This is now effectively a fallback or example for other non-matched POSTs.
-      // For safety, let's ensure this doesn't get triggered for /crystal/identify POST
-      // The logic above should handle it. This part is more for other paths.
-      crystal_core: { // This is just an example, should not be hit by /crystal/identify
-        id: `fallback_crystal_${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        confidence_score: 0.95,
-        visual_analysis: {
-          primary_color: "Clear",
-          secondary_colors: ["White", "Translucent"],
-          transparency: "Transparent to translucent",
-          formation: "Hexagonal crystal system"
-        },
-        identification: {
-          stone_type: "Clear Quartz",
-          crystal_family: "Quartz",
-          variety: "Natural Terminated Crystal",
-          confidence: 0.95
-        },
-        energy_mapping: {
-          primary_chakra: "Crown Chakra",
-          secondary_chakras: ["Third Eye Chakra"],
-          chakra_number: 7,
-          vibration_level: "High frequency"
-        },
-        astrological_data: {
-          primary_signs: ["All Signs", "Aries", "Leo"],
-          compatible_signs: ["Gemini", "Libra", "Aquarius"],
-          planetary_ruler: "Sun",
-          element: "All Elements"
-        },
-        numerology: {
-          crystal_number: 1,
-          color_vibration: 7,
-          chakra_number: 7,
-          master_number: 11
-        }
-      },
-      automatic_enrichment: {
-        crystal_bible_reference: "Clear Quartz is known as the 'Master Healer' and is one of the most versatile crystals in the mineral kingdom.",
-        healing_properties: [
-          "Amplifies energy and intention",
-          "Enhances clarity and focus", 
-          "Promotes spiritual growth",
-          "Master healer properties"
-        ],
-        usage_suggestions: [
-          "Meditation and spiritual practices",
-          "Energy amplification",
-          "Chakra balancing"
-        ],
-        care_instructions: [
-          "Cleanse with running water",
-          "Charge in moonlight or sunlight",
-          "Safe for all cleansing methods"
-        ],
-        synergy_crystals: ["Amethyst", "Rose Quartz", "Selenite"],
-        mineral_class: "Silicate"
-      },
-      metadata: {
-        timestamp: new Date().toISOString(),
-        backend_version: "Professional v3.0",
-        ai_powered: false,
-        status: "PRODUCTION_READY"
-      }
-    };
-    
-    response.json(professionalResponse);
-  } else {
+    // Default endpoint response for unmatched paths
     response.json({
       message: "🔮 Crystal Grimoire V3 Professional API",
       available_endpoints: [

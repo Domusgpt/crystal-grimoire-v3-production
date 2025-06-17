@@ -193,8 +193,9 @@ class UnifiedDataService extends ChangeNotifier {
       if (crystalData.userIntegration?.userId == null || crystalData.userIntegration!.userId!.isEmpty) {
           final currentUserId = _backendService.currentUserId;
           if (currentUserId != null && currentUserId.isNotEmpty) {
-            crystalData.userIntegration = (crystalData.userIntegration ?? UserIntegration(intentionSettings: [], userExperiences: []))
+            final updatedUserIntegration = (crystalData.userIntegration ?? UserIntegration(intentionSettings: [], userExperiences: []))
                                             .copyWith(userId: currentUserId);
+            crystalData = crystalData.copyWith(userIntegration: updatedUserIntegration);
           } else {
             // Handle case where user_id is essential but cannot be determined
             debugPrint("Warning: Updating crystal without a user_id in userIntegration.");

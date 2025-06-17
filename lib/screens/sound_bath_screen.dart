@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 import 'package:provider/provider.dart';
 import '../models/user_profile.dart';
+import '../widgets/common/mystical_card.dart';
 import 'package:audioplayers/audioplayers.dart';
 
 class SoundBathScreen extends StatefulWidget {
@@ -141,12 +142,6 @@ class _SoundBathScreenState extends State<SoundBathScreen>
     super.dispose();
   }
 
-  String _formatDuration(Duration? d) {
-    if (d == null) return "--:--";
-    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return "$minutes:$seconds";
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -650,9 +645,9 @@ class _SoundBathScreenState extends State<SoundBathScreen>
               ),
               const SizedBox(width: 12),
               Text(
-            text: _breathingAnimation.value > 1.0 ? 'Breathe In' : 'Breathe Out', // This logic seems fine
+                _breathingAnimation.value > 1.0 ? 'Breathe In' : 'Breathe Out',
                 style: GoogleFonts.poppins(
-              fontSize: 16, // Keep existing style
+                  fontSize: 16,
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
@@ -751,6 +746,55 @@ class _SoundBathScreenState extends State<SoundBathScreen>
       ],
     );
   }
+
+  // Widget for Playback Slider and Duration Text
+  Widget _buildPlaybackSlider() {
+    final color = soundData[selectedSound]!['color'] as Color;
+    return Column(
+      children: [
+        Slider(
+          value: (_position?.inMilliseconds ?? 0).toDouble().clamp(0.0, (_duration?.inMilliseconds ?? 1.0).toDouble()),
+          min: 0.0,
+          max: (_duration?.inMilliseconds ?? 1.0).toDouble() > 0 ? (_duration!.inMilliseconds.toDouble()) : 1.0, // Ensure max is not 0
+          onChanged: (value) {
+            final position = Duration(milliseconds: value.round());
+            _audioPlayer.seek(position);
+          },
+          activeColor: color,
+          inactiveColor: color.withOpacity(0.3),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                _formatDuration(_position ?? Duration.zero),
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+              ),
+              Text(
+                _formatDuration(_duration ?? Duration.zero),
+                style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    
+    if (duration.inHours > 0) {
+      return '$hours:$minutes:$seconds';
+    } else {
+      return '$minutes:$seconds';
+    }
+  }
 }
 
 class WavePainter extends CustomPainter {
@@ -787,38 +831,3 @@ class WavePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-// Widget for Playback Slider and Duration Text
-Widget _buildPlaybackSlider() {
-  final color = soundData[selectedSound]!['color'] as Color;
-  return Column(
-    children: [
-      Slider(
-        value: (_position?.inMilliseconds ?? 0).toDouble().clamp(0.0, (_duration?.inMilliseconds ?? 1.0).toDouble()),
-        min: 0.0,
-        max: (_duration?.inMilliseconds ?? 1.0).toDouble() > 0 ? (_duration!.inMilliseconds.toDouble()) : 1.0, // Ensure max is not 0
-        onChanged: (value) {
-          final position = Duration(milliseconds: value.round());
-          _audioPlayer.seek(position);
-        },
-        activeColor: color,
-        inactiveColor: color.withOpacity(0.3),
-      ),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              _formatDuration(_position ?? Duration.zero),
-              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
-            ),
-            Text(
-              _formatDuration(_duration ?? Duration.zero),
-              style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
-            ),
-          ],
-        ),
-      ),
-    ],
-  );
-}

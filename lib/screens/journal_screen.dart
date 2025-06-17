@@ -6,8 +6,11 @@ import '../widgets/common/mystical_button.dart';
 import '../widgets/common/mystical_card.dart';
 import '../widgets/common/mystical_text_widgets.dart';
 import '../services/collection_service_v2.dart';
+import '../services/astrology_service.dart';
 import '../models/user_profile.dart';
 import '../models/journal_entry.dart';
+import '../models/collection_models.dart';
+import '../models/unified_crystal_data.dart';
 
 class JournalScreen extends StatefulWidget {
   const JournalScreen({Key? key}) : super(key: key);
@@ -30,11 +33,11 @@ class _JournalScreenState extends State<JournalScreen>
   // New state variables for additional entry data
   String? _currentMoonPhase;
   List<String> _selectedMoods = [];
-  List<String> _selectedCrystalIds = []; // Stores crystalId from CollectionEntry
-  List<CollectionEntry> _ownedCrystals = []; // From collection_models.dart
+  List<String> _selectedCrystalIds = []; // Stores crystalId from UnifiedCrystalData
+  List<UnifiedCrystalData> _ownedCrystals = []; // From unified_crystal_data.dart
 
   late CollectionServiceV2 _collectionService;
-  late AstrologyService _astrologyService; // Added
+  AstrologyService? _astrologyService; // Made nullable
 
   // Predefined moods for ChoiceChips
   final List<String> _predefinedMoods = [
@@ -45,7 +48,12 @@ class _JournalScreenState extends State<JournalScreen>
   void initState() {
     super.initState();
     _collectionService = Provider.of<CollectionServiceV2>(context, listen: false);
-    _astrologyService = AstrologyService();
+    // Initialize astrology service if available
+    try {
+      _astrologyService = AstrologyService();
+    } catch (e) {
+      _astrologyService = null;
+    }
     _loadEntries();
     // Call _loadDataForWritingView only if starting in writing mode (e.g. for a new entry directly)
     // or when toggling to writing mode. For now, primarily called when _isWriting becomes true.
@@ -99,15 +107,19 @@ class _JournalScreenState extends State<JournalScreen>
     // Show a loading indicator for this specific data if needed, separate from _isLoading for entries list
     // For simplicity, just fetching and updating state.
     try {
-      // Fetch in parallel
-      final results = await Future.wait([
-        _astrologyService.getCurrentMoonPhase(),
-        _collectionService.loadUserOwnedCrystals(),
-      ]);
+      // Load moon phase
+      if (_astrologyService != null) {
+        _currentMoonPhase = await _astrologyService!.getCurrentMoonPhase();
+      } else {
+        _currentMoonPhase = "New Moon"; // Default
+      }
+      
+      // Load user crystals
+      _ownedCrystals = _collectionService.collection;
+      
       if (!mounted) return;
       setState(() {
-        _currentMoonPhase = results[0] as String;
-        _ownedCrystals = results[1] as List<CollectionEntry>;
+        // State updated
       });
     } catch (e) {
       if (!mounted) return;
@@ -310,9 +322,7 @@ class _JournalScreenState extends State<JournalScreen>
                             );
                           },
                           icon: Icons.star,
-                          gradient: LinearGradient(
-                            colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
-                          ),
+                          color: theme.colorScheme.primary,
                         ),
                       ],
                     ),
@@ -408,8 +418,8 @@ class _JournalScreenState extends State<JournalScreen>
                         return FadeTransition(opacity: animation, child: child);
                       },
                       child: _isWriting
-                          ? _buildWritingView(key: const ValueKey('writingView')) // Added keys for AnimatedSwitcher
-                          : _buildJournalView(key: const ValueKey('journalView')),
+                          ? Container(key: const ValueKey('writingView'), child: _buildWritingView())
+                          : Container(key: const ValueKey('journalView'), child: _buildJournalView()),
                     ),
                   ),
                 ],
@@ -515,7 +525,13 @@ class _JournalScreenState extends State<JournalScreen>
                     child: Text(
                       _selectedCrystalIds.isEmpty
                           ? "None selected"
-                          : "Using: ${_selectedCrystalIds.map((id) => _ownedCrystals.firstWhere((c) => c.crystalId == id, orElse: () => CollectionEntry(id: '', crystalId: id, name: 'Unknown', addedDate: DateTime.now(), properties: {})).name).join(', ')}",
+                          : "Using: ${_selectedCrystalIds.map((id) {
+                              try {
+                                return _ownedCrystals.firstWhere((c) => c.id == id).name;
+                              } catch (e) {
+                                return 'Unknown Crystal';
+                              }
+                            }).join(', ')}",
                       style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8)),
                     ),
                   ),
@@ -528,7 +544,6 @@ class _JournalScreenState extends State<JournalScreen>
             SizedBox(
               height: 250,
               child: MysticalCard(
-                elevation: 2,
                 child: TextField(
                   controller: _journalController,
                   maxLines: null,
@@ -551,9 +566,7 @@ class _JournalScreenState extends State<JournalScreen>
               text: _editingEntryId != null ? 'Update Entry' : 'Save Entry',
               onPressed: _saveEntry,
               icon: _editingEntryId != null ? Icons.check_circle_outline : Icons.save_alt,
-              gradient: LinearGradient(
-                colors: [theme.colorScheme.primary, theme.colorScheme.secondary],
-              ),
+              color: theme.colorScheme.primary,
             ),
             const SizedBox(height: 16),
           ],

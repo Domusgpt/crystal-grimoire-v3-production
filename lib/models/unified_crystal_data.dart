@@ -36,6 +36,9 @@ class VisualAnalysis {
       'size_estimate': sizeEstimate,
     };
   }
+
+  // Compatibility getters
+  List<String> get colors => [primaryColor, ...secondaryColors];
 }
 
 // Corresponds to Pydantic model: Identification
@@ -102,6 +105,10 @@ class EnergyMapping {
       'vibration_level': vibrationLevel,
     };
   }
+
+  // Compatibility getters
+  List<String> get primaryChakras => [primaryChakra];
+  List<String> get chakras => [primaryChakra, ...secondaryChakras];
 }
 
 // Corresponds to Pydantic model: AstrologicalData
@@ -135,6 +142,9 @@ class AstrologicalData {
       'element': element,
     };
   }
+
+  // Compatibility getters
+  List<String> get elementalAlignment => element != null ? [element!] : [];
 }
 
 // Corresponds to Pydantic model: NumerologyData
@@ -217,6 +227,9 @@ class CrystalCore {
       'numerology': numerology.toJson(),
     };
   }
+
+  // Compatibility getters
+  VisualAnalysis get physicalProperties => visualAnalysis;
 }
 
 // Corresponds to Pydantic model: UserIntegration
@@ -258,6 +271,9 @@ class UserIntegration {
       'intention_settings': intentionSettings,
     };
   }
+
+  // Compatibility getters
+  String? get personalNotes => userExperiences.isNotEmpty ? userExperiences.join('\n') : null;
 
   UserIntegration copyWith({
     String? userId,
@@ -380,6 +396,12 @@ class UnifiedCrystalData {
   List<String> get chakras => crystalCore.energyMapping.primaryChakras;
   List<String> get healingProperties => automaticEnrichment?.healingProperties ?? [];
   String get description => automaticEnrichment?.crystalBibleReference ?? '';
+  
+  // Additional compatibility getters
+  String get crystalId => crystalCore.id;
+  bool get isFavorite => userIntegration?.personalRating != null && userIntegration!.personalRating! >= 4;
+  DateTime get dateAdded => DateTime.tryParse(crystalCore.timestamp) ?? DateTime.now();
+  List<String> get primaryUses => automaticEnrichment?.usageSuggestions ?? [];
   
   // Create a legacy Crystal object for backward compatibility
   Crystal get crystal => Crystal(

@@ -156,16 +156,20 @@ class CollectionServiceV2 extends ChangeNotifier {
   }) async {
     final log = UsageLog(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
+      timestamp: DateTime.now(),
+      action: 'healing_session',
+      metadata: {
+        'purpose': purpose,
+        'intention': intention,
+        'result': result,
+        'moodBefore': moodBefore,
+        'moodAfter': moodAfter,
+        'energyBefore': energyBefore,
+        'energyAfter': energyAfter,
+        'moonPhase': moonPhase,
+      },
       collectionEntryId: entryId,
       dateTime: DateTime.now(),
-      purpose: purpose,
-      intention: intention,
-      result: result,
-      moodBefore: moodBefore,
-      moodAfter: moodAfter,
-      energyBefore: energyBefore,
-      energyAfter: energyAfter,
-      moonPhase: moonPhase,
     );
     
     _usageLogs.add(log);
@@ -242,9 +246,11 @@ class CollectionServiceV2 extends ChangeNotifier {
     
     // Find the most recent usage for each crystal
     for (final log in _usageLogs) {
-      final currentDate = lastUsedMap[log.collectionEntryId];
-      if (currentDate == null || log.dateTime.isAfter(currentDate)) {
-        lastUsedMap[log.collectionEntryId] = log.dateTime;
+      if (log.collectionEntryId != null && log.dateTime != null) {
+        final currentDate = lastUsedMap[log.collectionEntryId!];
+        if (currentDate == null || log.dateTime!.isAfter(currentDate)) {
+          lastUsedMap[log.collectionEntryId!] = log.dateTime!;
+        }
       }
     }
     
@@ -260,18 +266,41 @@ class CollectionServiceV2 extends ChangeNotifier {
   
   /// Get last used date for a specific crystal
   DateTime? getLastUsedDate(String entryId) {
-    final logs = _usageLogs.where((log) => log.collectionEntryId == entryId);
+    final logs = _usageLogs
+        .where((log) => log.collectionEntryId == entryId && log.dateTime != null);
     if (logs.isEmpty) return null;
     
     return logs
-        .map((log) => log.dateTime)
+        .map((log) => log.dateTime!)
         .reduce((a, b) => a.isAfter(b) ? a : b);
   }
   
   /// Get collection statistics
   CollectionStats getStats() {
-    // Pass the UCD list to fromCollection, which now expects List<UnifiedCrystalData>
-    return CollectionStats.fromCollection(_collection, _usageLogs);
+    // Create stats directly from UnifiedCrystalData collection
+    final Map<String, int> chakraCount = {};
+    final Map<String, int> colorCount = {};
+    
+    for (final crystal in _collection) {
+      // Count chakras
+      final chakras = crystal.crystalCore.energyMapping?.chakras ?? [];
+      for (final chakra in chakras) {
+        chakraCount[chakra] = (chakraCount[chakra] ?? 0) + 1;
+      }
+      
+      // Count colors
+      final colors = crystal.crystalCore.physicalProperties?.colors ?? [];
+      for (final color in colors) {
+        colorCount[color] = (colorCount[color] ?? 0) + 1;
+      }
+    }
+    
+    return CollectionStats(
+      totalCrystals: _collection.length,
+      totalUsage: _usageLogs.length,
+      chakraCount: chakraCount,
+      colorCount: colorCount,
+    );
   }
   
   /// Search crystals

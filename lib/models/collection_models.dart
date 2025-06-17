@@ -70,6 +70,30 @@ class CollectionStats {
       'colorCount': colorCount,
     };
   }
+
+  // Compatibility method for AI context
+  Map<String, dynamic> toAIContext() {
+    return {
+      'total_crystals': totalCrystals,
+      'total_usage': totalUsage,
+      'favorite_chakras': chakraCount.entries
+          .where((e) => e.value > 0)
+          .map((e) => e.key)
+          .toList(),
+      'favorite_colors': colorCount.entries
+          .where((e) => e.value > 0)
+          .map((e) => e.key)
+          .toList(),
+      'most_active_chakra': chakraCount.entries
+          .where((e) => e.value > 0)
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key,
+      'most_popular_color': colorCount.entries
+          .where((e) => e.value > 0)
+          .reduce((a, b) => a.value > b.value ? a : b)
+          .key,
+    };
+  }
 }
 
 class CollectionEntry {

@@ -9,6 +9,10 @@ import 'package:google_fonts/google_fonts.dart';
 // Services
 import 'services/app_state.dart';
 import 'services/collection_service_v2.dart';
+import 'services/unified_data_service.dart';
+import 'services/firebase_service.dart';
+import 'services/storage_service.dart';
+import 'services/backend_service.dart';
 import 'firebase_options.dart';
 
 // Screens
@@ -58,7 +62,22 @@ class CrystalGrimoireApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AppState()),
-        Provider(create: (_) => CollectionServiceV2()),
+        Provider(create: (_) => FirebaseService()),
+        Provider(create: (_) => StorageService()),
+        Provider(create: (_) => BackendService()),
+        Provider(
+          create: (context) => UnifiedDataService(
+            firebaseService: context.read<FirebaseService>(),
+            storageService: context.read<StorageService>(),
+            backendService: context.read<BackendService>(),
+          ),
+        ),
+        Provider(
+          create: (context) => CollectionServiceV2(
+            unifiedDataService: context.read<UnifiedDataService>(),
+            backendService: context.read<BackendService>(),
+          ),
+        ),
       ],
       child: MaterialApp(
         title: '🔮 Crystal Grimoire V3',
