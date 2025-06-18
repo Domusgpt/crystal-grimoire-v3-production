@@ -1,6 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+// Added imports
+import '../services/ai_service.dart';
+import '../services/backend_service.dart';
+import '../services/collection_service.dart';
+import '../services/astrology_service.dart';
+import '../models/user_profile.dart';
+import '../models/personalized_guidance_result.dart';
+// End added imports
+
 import '../services/app_state.dart';
 import '../widgets/common/mystical_button.dart';
 import '../widgets/animations/mystical_animations.dart';
@@ -25,6 +35,13 @@ class _LLMLabScreenState extends State<LLMLabScreen>
   bool _isLoading = false;
   String _selectedModel = 'Spiritual Guide (GPT-4)';
   String _selectedCategory = 'General Guidance';
+
+  // Service instances - assuming they are initialized in didChangeDependencies or similar
+  UserProfile? _userProfile;
+  late CollectionService _collectionService;
+  late BackendService _backendService;
+  late AstrologyService _astrologyService;
+  // AIService is static, so no instance needed here.
 
   @override
   void initState() {
@@ -64,6 +81,19 @@ class _LLMLabScreenState extends State<LLMLabScreen>
         model: 'Spiritual Guide',
       ));
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Initialize services here - this is a common pattern
+    // For the purpose of this subtask, we assume they are correctly initialized
+    // and available when _sendMessage is called.
+    // Example initialization (actual initialization might differ based on app structure):
+    _userProfile = Provider.of<AppState>(context).userProfile;
+    _collectionService = Provider.of<CollectionService>(context, listen: false);
+    _backendService = Provider.of<BackendService>(context, listen: false);
+    _astrologyService = Provider.of<AstrologyService>(context, listen: false);
   }
 
   @override
@@ -491,14 +521,14 @@ class _LLMLabScreenState extends State<LLMLabScreen>
     }
   }
 
-  void _sendMessage() {
+  Future<void> _sendMessage() async {
     if (_questionController.text.trim().isEmpty || _isLoading) return;
 
-    final userMessage = _questionController.text.trim();
+    final userMessageText = _questionController.text.trim();
     
     setState(() {
       _messages.add(ChatMessage(
-        text: userMessage,
+        text: userMessageText,
         isUser: true,
         timestamp: DateTime.now(),
       ));
@@ -508,42 +538,78 @@ class _LLMLabScreenState extends State<LLMLabScreen>
     _questionController.clear();
     _scrollToBottom();
 
-    // Simulate AI response
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      // Ensure services are available (they should be initialized in didChangeDependencies)
+      if (_userProfile == null) {
+        throw Exception("User profile is not loaded.");
+      }
+      // _collectionService, _backendService, _astrologyService are marked 'late'
+      // and should be initialized by the time this method is called.
+
+      final PersonalizedGuidanceResult result = await AIService.getPersonalizedMetaphysicalGuidance(
+        userQuery: userMessageText,
+        guidanceType: _selectedCategory,
+        currentUserProfile: _userProfile!,
+        collectionService: _collectionService,
+        backendService: _backendService,
+        astrologyService: _astrologyService,
+        // modelPreference: _selectedModel, // Optional: if AIService supports it
+      );
+
       if (mounted) {
         setState(() {
           _messages.add(ChatMessage(
-            text: _generateAIResponse(userMessage),
+            text: result.userFacingGuidance,
+            isUser: false,
+            timestamp: DateTime.now(),
+            model: _selectedModel, // Or derive from result if available
+          ));
+        });
+        print('Backend Structured Data: ${result.backendStructuredData}');
+        context.read<AppState>().incrementUsage('ai_guidance');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(ChatMessage(
+            text: "Sorry, I couldn't get guidance at this moment: ${e.toString()}",
             isUser: false,
             timestamp: DateTime.now(),
             model: _selectedModel,
           ));
+        });
+      }
+      print('Error getting personalized guidance: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
           _isLoading = false;
         });
         _scrollToBottom();
-        
-        // Update app state
-        context.read<AppState>().incrementUsage('ai_guidance');
       }
-    });
-  }
-
-  String _generateAIResponse(String question) {
-    // Mock AI responses based on question content
-    final lowerQuestion = question.toLowerCase();
-    
-    if (lowerQuestion.contains('amethyst')) {
-      return "🔮 Amethyst is a powerful protective stone that enhances spiritual awareness and intuition. Based on your current energy, I sense you would benefit from placing amethyst under your pillow for enhanced dream work. The stone's violet ray connects you to your crown chakra, facilitating deeper meditation and psychic development.\n\n✨ For your specific situation, try holding amethyst during full moon meditations to amplify its cleansing properties.";
-    } else if (lowerQuestion.contains('healing') || lowerQuestion.contains('chakra')) {
-      return "🌈 Chakra healing is a beautiful journey of energy alignment. Each chakra responds to specific crystals and frequencies. I recommend starting with a simple chakra meditation using corresponding stones:\n\n• Root: Red Jasper for grounding\n• Sacral: Carnelian for creativity\n• Solar Plexus: Citrine for confidence\n• Heart: Rose Quartz for love\n• Throat: Blue Lace Agate for communication\n• Third Eye: Amethyst for intuition\n• Crown: Clear Quartz for spiritual connection\n\nPlace each stone on its corresponding chakra while lying down and breathe deeply.";
-    } else if (lowerQuestion.contains('astrology') || lowerQuestion.contains('birth chart')) {
-      return "⭐ Your birth chart is a cosmic blueprint of your soul's journey. The planetary positions at your birth reveal your spiritual gifts and life lessons. Based on astrological patterns, I sense you're currently in a period of spiritual awakening.\n\n🌙 The current lunar cycle suggests this is an excellent time for introspection and setting intentions. Consider working with moonstone during this phase to enhance your intuitive abilities and emotional healing.";
-    } else if (lowerQuestion.contains('meditation')) {
-      return "🧘‍♀️ Meditation is the gateway to inner wisdom. For your spiritual development, I recommend starting with crystal-enhanced meditation:\n\n1. Create a sacred space with your favorite crystals\n2. Hold a clear quartz point to amplify your intention\n3. Focus on your breath and allow thoughts to flow\n4. Visualize white light entering through your crown chakra\n5. End with gratitude and grounding\n\n✨ The crystals will help stabilize your energy and deepen your practice.";
-    } else {
-      return "🔮 Thank you for your spiritual inquiry. The universe has guided you to ask this question at the perfect time. Based on the cosmic energies surrounding you, I sense you're seeking deeper understanding and connection.\n\n✨ Every spiritual journey is unique, and your path is unfolding exactly as it should. Trust your intuition and remain open to the signs and synchronicities around you. Consider working with crystals that resonate with your current energy - they will help amplify your natural spiritual gifts.\n\n🌟 Remember, you already have all the wisdom you need within you. The crystals and spiritual practices simply help you access and trust that inner knowing.";
     }
   }
+
+  // Remove the mock _generateAIResponse method as it's no longer used.
+  // String _generateAIResponse(String question) { ... }
+
+  void _scrollToBottom() {
+  // String _generateAIResponse(String question) { // This method is now removed
+  //   // Mock AI responses based on question content
+  //   final lowerQuestion = question.toLowerCase();
+    
+  //   if (lowerQuestion.contains('amethyst')) {
+  //     return "🔮 Amethyst is a powerful protective stone that enhances spiritual awareness and intuition. Based on your current energy, I sense you would benefit from placing amethyst under your pillow for enhanced dream work. The stone's violet ray connects you to your crown chakra, facilitating deeper meditation and psychic development.\n\n✨ For your specific situation, try holding amethyst during full moon meditations to amplify its cleansing properties.";
+  //   } else if (lowerQuestion.contains('healing') || lowerQuestion.contains('chakra')) {
+  //     return "🌈 Chakra healing is a beautiful journey of energy alignment. Each chakra responds to specific crystals and frequencies. I recommend starting with a simple chakra meditation using corresponding stones:\n\n• Root: Red Jasper for grounding\n• Sacral: Carnelian for creativity\n• Solar Plexus: Citrine for confidence\n• Heart: Rose Quartz for love\n• Throat: Blue Lace Agate for communication\n• Third Eye: Amethyst for intuition\n• Crown: Clear Quartz for spiritual connection\n\nPlace each stone on its corresponding chakra while lying down and breathe deeply.";
+  //   } else if (lowerQuestion.contains('astrology') || lowerQuestion.contains('birth chart')) {
+  //     return "⭐ Your birth chart is a cosmic blueprint of your soul's journey. The planetary positions at your birth reveal your spiritual gifts and life lessons. Based on astrological patterns, I sense you're currently in a period of spiritual awakening.\n\n🌙 The current lunar cycle suggests this is an excellent time for introspection and setting intentions. Consider working with moonstone during this phase to enhance your intuitive abilities and emotional healing.";
+  //   } else if (lowerQuestion.contains('meditation')) {
+  //     return "🧘‍♀️ Meditation is the gateway to inner wisdom. For your spiritual development, I recommend starting with crystal-enhanced meditation:\n\n1. Create a sacred space with your favorite crystals\n2. Hold a clear quartz point to amplify your intention\n3. Focus on your breath and allow thoughts to flow\n4. Visualize white light entering through your crown chakra\n5. End with gratitude and grounding\n\n✨ The crystals will help stabilize your energy and deepen your practice.";
+  //   } else {
+  //     return "🔮 Thank you for your spiritual inquiry. The universe has guided you to ask this question at the perfect time. Based on the cosmic energies surrounding you, I sense you're seeking deeper understanding and connection.\n\n✨ Every spiritual journey is unique, and your path is unfolding exactly as it should. Trust your intuition and remain open to the signs and synchronicities around you. Consider working with crystals that resonate with your current energy - they will help amplify your natural spiritual gifts.\n\n🌟 Remember, you already have all the wisdom you need within you. The crystals and spiritual practices simply help you access and trust that inner knowing.";
+  //   }
+  // }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
