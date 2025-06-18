@@ -6,6 +6,8 @@ import '../models/crystal.dart'; // Still used by getUserCollection, saveCrystal
 import '../models/birth_chart.dart';
 import '../models/crystal_collection.dart'; // Potentially for CrystalIdentification if kept
 import '../models/unified_crystal_data.dart'; // New model
+// Add this import:
+import '../models/personalized_guidance_result.dart';
 import 'platform_file.dart';
 // StorageService is used by identifyCrystal to get BirthChart.
 // If identifyCrystal becomes an instance method, it might need StorageService injected or accessed differently.
@@ -169,7 +171,7 @@ class BackendService {
         body: jsonEncode(requestBody),
       ).timeout(BackendConfig.uploadTimeout);
       
-      if (response.statusCode == 200) {
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
         return UnifiedCrystalData.fromJson(data);
       } else if (response.statusCode == 401) {
@@ -353,10 +355,11 @@ class BackendService {
       ).timeout(BackendConfig.apiTimeout);
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['status'] != 'success') {
-            throw Exception(data['message'] ?? 'Failed to delete crystal on backend.');
-        }
+        // final data = jsonDecode(response.body); // Backend might not return body for DELETE
+        // if (data['status'] != 'success') { // Check if necessary based on actual backend response
+        //     throw Exception(data['message'] ?? 'Failed to delete crystal on backend.');
+        // }
+        return; // Successful deletion
       } else if (response.statusCode == 401) {
         clearAuth(); // Instance method
         throw Exception('Authentication required or token expired.');
@@ -447,55 +450,67 @@ class BackendService {
   // }
   
   /// Get personalized spiritual guidance using LLM integration
-  Future<Map<String, dynamic>> getPersonalizedGuidance({
+  // OLD: Future<Map<String, dynamic>> getPersonalizedGuidance({
+  // NEW RETURN TYPE: Future<PersonalizedGuidanceResult>
+  Future<PersonalizedGuidanceResult> getPersonalizedGuidance({
     required String guidanceType,
     required Map<String, dynamic> userProfile, // Keep as Map for flexibility with JSON
     required String customPrompt,
   }) async {
+    // The backend endpoint is assumed to be '/guidance/personalized' as per functions/index.js
+    // It expects a JSON body, not multipart/form-data.
+    final String endpointUrl = '${BackendConfig.baseUrl}/guidance/personalized';
+    if (!isAuthenticated) {
+        throw Exception('Authentication required for personalized guidance.');
+    }
+
     try {
-      final uri = Uri.parse('${BackendConfig.baseUrl}/spiritual/guidance'); // Assuming this endpoint exists
+      final requestBody = {
+        'guidanceType': guidanceType,
+        'userProfile': userProfile, // This is the rich context map
+        'customPrompt': customPrompt,
+      };
       
-      // Using MultipartRequest and then converting to StreamedRequest to send via _httpClient
-      final multipartRequest = http.MultipartRequest('POST', uri);
-      
-      multipartRequest.headers.addAll(_headers);
+      print('🔮 Requesting personalized guidance via BackendService to: $endpointUrl');
 
-      multipartRequest.fields['guidance_type'] = guidanceType;
-      multipartRequest.fields['user_profile'] = jsonEncode(userProfile);
-      multipartRequest.fields['custom_prompt'] = customPrompt;
-      
-      print('🔮 Requesting personalized guidance: $guidanceType via instance method');
-
-      final streamedRequest = http.StreamedRequest(
-        multipartRequest.method,
-        multipartRequest.url,
-      );
-      streamedRequest.headers.addAll(multipartRequest.headers);
-      
-      multipartRequest.finalize().pipe(streamedRequest.sink).catchError((e) {
-        print("Error piping request: $e");
-        throw e;
-      });
-
-      final http.StreamedResponse streamedResponse = await _httpClient.send(streamedRequest)
-          .timeout(BackendConfig.apiTimeout);
-      final response = await http.Response.fromStream(streamedResponse);
+      final response = await _httpClient.post(
+        Uri.parse(endpointUrl),
+        headers: _headers..addAll({'Content-Type': 'application/json'}),
+        body: jsonEncode(requestBody),
+      ).timeout(BackendConfig.apiTimeout); // Consider a longer timeout for LLM calls
       
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        print('✨ Received personalized guidance');
-        return data;
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        print('✨ Received personalized guidance response from backend.');
+        return PersonalizedGuidanceResult.fromJson(data);
+      } else if (response.statusCode == 401) {
+        clearAuth();
+        throw Exception('Authentication expired. Please login again.');
       } else {
-        print('❌ Guidance request failed: ${response.statusCode}');
-        throw Exception('Failed to get personalized guidance: ${response.statusCode}');
+        print('❌ Guidance request failed: ${response.statusCode} - ${response.body}');
+        // Attempt to parse error detail if available
+        String errorMessage = 'Failed to get personalized guidance: ${response.statusCode}';
+        try {
+            final errorBody = jsonDecode(response.body);
+            if (errorBody['detail'] != null) {
+                errorMessage = errorBody['detail'];
+            } else if (errorBody['error'] != null) {
+                errorMessage = errorBody['error'];
+            }
+        } catch (_) {
+            // Ignore parsing error, use default message + body
+            errorMessage += ' - ${response.body}';
+        }
+        throw Exception(errorMessage);
       }
     } catch (e) {
-      print('❌ Error getting personalized guidance: $e');
-      return {
-        'guidance': _getFallbackGuidance(guidanceType), // Instance method call
-        'source': 'fallback',
-        'timestamp': DateTime.now().toIso8601String(),
-      };
+      print('❌ Error getting personalized guidance in BackendService: $e');
+      // Return a PersonalizedGuidanceResult with default/error values
+      return PersonalizedGuidanceResult(
+        userFacingGuidance: _getFallbackGuidance(guidanceType), // Instance method call
+        backendStructuredData: {'error': e.toString()},
+        sessionId: null,
+      );
     }
   }
   
@@ -631,7 +646,6 @@ class BackendService {
       ).timeout(BackendConfig.apiTimeout);
 
       if (response.statusCode == 200 || response.statusCode == 204) {
-        // Success, no content to return for DELETE or backend might return a success message
         return;
       } else if (response.statusCode == 401) {
         clearAuth();
