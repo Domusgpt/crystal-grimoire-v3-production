@@ -49,3 +49,8 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+            - name: Flutter publish
+  # You may pin to the exact commit or the version.
+  # uses: spydon/flutter-publish@2f4717ac4c4a76de80906ef884d93285cd52918b
+  uses: spydon/flutter-publish@v0
+          
